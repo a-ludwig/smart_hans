@@ -207,7 +207,7 @@ while True:
 
             cv2.line(img, p1, p2, (0, 255, 255), 2)
             
-            cv2.line(img, tuple(x1), tuple(x2), (255, 255, 0), 2)
+            #cv2.line(img, tuple(x1), tuple(x2), (255, 255, 0), 2)
             # for (x, y) in marks:
             #     cv2.circle(img, (x, y), 4, (255, 255, 0), -1)
             # cv2.putText(img, str(p1), p1, font, 1, (0, 255, 255), 1)
@@ -238,9 +238,9 @@ while True:
             #     print('Head left')
             #     cv2.putText(img, 'Head left', (90, 30), font, 2, (255, 255, 128), 3)
             
-            cv2.putText(img, str(ang1), tuple(p1), font, 2, (128, 255, 255), 3)
-            cv2.putText(img, str(ang2), tuple(x1), font, 2, (255, 255, 128), 3)
-            cv2.putText(img, str(fps), [100,100], font, 2, (255, 0, 0), 3)
+            #cv2.putText(img, str(ang1), tuple(p1), font, 2, (128, 255, 255), 3)
+           # cv2.putText(img, str(ang2), tuple(x1), font, 2, (255, 255, 128), 3)
+            #cv2.putText(img, str(fps), [100,100], font, 2, (255, 0, 0), 3)
 
         #############
         # Stumpy
@@ -278,6 +278,8 @@ cap.release()
 cols = ['p1.x','p1.y','p2.x', 'p2.y']
 
 results = pd.DataFrame(data, columns=cols)
+results.to_csv("recorded_data/headpose_test.csv")
+#results.to_excel("recorded_data/headpose_test.xls")
 print(results.head)
 
 fig, axs = plt.subplots(2, sharex=True, gridspec_kw={'hspace': 0})
@@ -288,7 +290,7 @@ axs[0].set_ylabel('Bewegung', fontsize='20')
 rect = Rectangle((discord_idx, 0), m, 40, facecolor='lightgrey')
 axs[0].add_patch(rect)
 axs[1].set_xlabel('Time', fontsize ='20')
-axs[1].set_ylabel('Matrix Profile', fontsize='20')
+axs[1].set_ylabel('Matrix Profile_!', fontsize='20')
 axs[1].axvline(x=discord_idx, linestyle="dashed")
 axs[1].plot(stream.P_)
 plt.show()
@@ -297,7 +299,7 @@ plt.show()
 # dicord Discovery #
 ####################
 
-mD =  30
+mD =  60
 #mp = stumpy.gpu_stump(results["p1.x"].astype(np.float64), m)
 mp = stumpy.stump(results["p1.x"].astype(np.float64), mD)
 
@@ -317,7 +319,7 @@ axs[0].set_ylabel('Bewegung', fontsize='20')
 rect = Rectangle((discord_idx, 0), m, 40, facecolor='lightgrey')
 axs[0].add_patch(rect)
 axs[1].set_xlabel('Time', fontsize ='20')
-axs[1].set_ylabel('Matrix Profile', fontsize='20')
+axs[1].set_ylabel('Matrix Profile_2', fontsize='20')
 axs[1].axvline(x=discord_idx, linestyle="dashed")
 axs[1].plot(mp[:, 0])
 plt.show()
