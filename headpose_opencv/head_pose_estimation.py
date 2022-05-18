@@ -11,6 +11,26 @@ import math
 from face_detector import get_face_detector, find_faces
 from face_landmarks import get_landmark_model, detect_marks
 
+
+################
+# Stumpy Imports
+################
+
+# Für Jupyter notebooks
+# %matplotlib inline
+
+import pandas as pd
+import stumpy
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.dates as dates
+from matplotlib.patches import Rectangle
+import datetime as dt
+
+#plt.style.use('https://raw.githubusercontent.com/TDAmeritrade/stumpy/main/docs/stumpy.mplstyle')
+
+################
+
 def get_2d_points(img, rotation_vector, translation_vector, camera_matrix, val):
     """Return the 3D points present as 2D for making annotation box"""
     point_3d = []
@@ -148,6 +168,10 @@ camera_matrix = np.array(
                          [0, focal_length, center[1]],
                          [0, 0, 1]], dtype = "double"
                          )
+
+data = []
+stumpM = 10
+
 while True:
     ret, img = cap.read()
     fps = cap.get(cv2.CAP_PROP_FPS)
@@ -217,6 +241,26 @@ while True:
             cv2.putText(img, str(ang1), tuple(p1), font, 2, (128, 255, 255), 3)
             cv2.putText(img, str(ang2), tuple(x1), font, 2, (255, 255, 128), 3)
             cv2.putText(img, str(fps), [100,100], font, 2, (255, 0, 0), 3)
+
+        #############
+        # Stumpy
+        #############
+        data.append((p1[0],p1[1],p2[0], p2[1]))
+
+        if len(data) == 60:
+            cols = ['p1.x','p1.y','p2.x', 'p2.y']
+            results = pd.DataFrame(data, columns=cols)
+
+            stream = stumpy.stumpi(results["p1.x"].astype(np.float64), stumpM)
+        
+
+        if len(data) > 60:
+            
+
+            stream.update(float(p1[0]))
+            discord_idx = np.argsort(stream.P_)[-1]
+
+        ##############
         cv2.imshow('img', img)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
@@ -224,3 +268,55 @@ while True:
         break
 cv2.destroyAllWindows()
 cap.release()
+
+
+
+
+####################
+# create dataframe #
+####################
+cols = ['p1.x','p1.y','p2.x', 'p2.y']
+
+results = pd.DataFrame(data, columns=cols)
+print(results.head)
+
+fig, axs = plt.subplots(2, sharex=True, gridspec_kw={'hspace': 0})
+plt.suptitle('Discord (Anomaly/Novelty) Discovery', fontsize='30')
+
+axs[0].plot(results['p1.x'].values)
+axs[0].set_ylabel('Bewegung', fontsize='20')
+rect = Rectangle((discord_idx, 0), m, 40, facecolor='lightgrey')
+axs[0].add_patch(rect)
+axs[1].set_xlabel('Time', fontsize ='20')
+axs[1].set_ylabel('Matrix Profile', fontsize='20')
+axs[1].axvline(x=discord_idx, linestyle="dashed")
+axs[1].plot(stream.P_)
+plt.show()
+
+####################
+# dicord Discovery #
+####################
+
+#m = 10
+mp = stumpy.gpu_stump(results["p1.x"].astype(np.float64), m)
+
+discord_idx = np.argsort(mp[:, 0])[-1]
+
+nearest_neighbor_distance = mp[discord_idx, 0]
+
+
+########
+# Plot #
+########
+fig, axs = plt.subplots(2, sharex=True, gridspec_kw={'hspace': 0})
+plt.suptitle('Discord (Anomaly/Novelty) Discovery', fontsize='30')
+
+axs[0].plot(results['p1.x'].values)
+axs[0].set_ylabel('Bewegung', fontsize='20')
+rect = Rectangle((discord_idx, 0), m, 40, facecolor='lightgrey')
+axs[0].add_patch(rect)
+axs[1].set_xlabel('Time', fontsize ='20')
+axs[1].set_ylabel('Matrix Profile', fontsize='20')
+axs[1].axvline(x=discord_idx, linestyle="dashed")
+axs[1].plot(mp[:, 0])
+plt.show()
