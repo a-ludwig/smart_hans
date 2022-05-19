@@ -259,7 +259,7 @@ while True:
 
         if len(data) > 60:
             
-            ## print("adding Data to stream: )
+            cv2.putText(img, "adding", [300,400], font, 2, (255, 0, 0), 3)
             stream.update(float(p1[1]))
             discord_idx = np.argsort(stream.P_)[-1]
 
@@ -302,11 +302,12 @@ plt.show()
 # dicord Discovery #
 ####################
 
-mD =  30
-mp = stumpy.gpu_stump(results["p1.y"].astype(np.float64), mD)
-#mp = stumpy.stump(results["p1.x"].astype(np.float64), mD)
+m =  10
+#mp = stumpy.gpu_stump(results["p1.y"].astype(np.float64), mD)
+#mp = stumpy.stump(results["p1.y"].astype(np.float64), mD)
+mp = stumpy.stump(results["p1.y"].astype(np.float64), m)
 
-discord_idx = np.argsort(mp[:, 0])[-1]
+#discord_idx = np.argsort(mp[:, 0])[-1]
 
 nearest_neighbor_distance = mp[discord_idx, 0]
 
@@ -315,7 +316,7 @@ nearest_neighbor_distance = mp[discord_idx, 0]
 # Plot #
 ########
 fig, axs = plt.subplots(2, sharex=True, gridspec_kw={'hspace': 0})
-plt.suptitle('Discord (Anomaly/Novelty) Discovery', fontsize='30')
+plt.suptitle('Discord (Anomaly/Novelty) Discovery stream', fontsize='30')
 
 axs[0].plot(results['p1.y'].values)
 axs[0].set_ylabel('Bewegung', fontsize='20')
