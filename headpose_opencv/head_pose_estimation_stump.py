@@ -237,10 +237,13 @@ while True:
             # elif ang2 <= -48:
             #     print('Head left')
             #     cv2.putText(img, 'Head left', (90, 30), font, 2, (255, 255, 128), 3)
+
             
             #cv2.putText(img, str(ang1), tuple(p1), font, 2, (128, 255, 255), 3)
            # cv2.putText(img, str(ang2), tuple(x1), font, 2, (255, 255, 128), 3)
             #cv2.putText(img, str(fps), [100,100], font, 2, (255, 0, 0), 3)
+            cv2.putText(img, str(p1[0]), [100,100], font, 2, (255, 0, 0), 3)
+            cv2.putText(img, str(p1[1]), [300,100], font, 2, (255, 0, 0), 3)
 
         #############
         # Stumpy
@@ -251,13 +254,13 @@ while True:
             cols = ['p1.x','p1.y','p2.x', 'p2.y']
             results = pd.DataFrame(data, columns=cols)
 
-            stream = stumpy.stumpi(results["p1.x"].astype(np.float64), stumpM)
+            stream = stumpy.stumpi(results["p1.y"].astype(np.float64), stumpM)
         
 
         if len(data) > 60:
             
             ## print("adding Data to stream: )
-            stream.update(float(p1[0]))
+            stream.update(float(p1[1]))
             discord_idx = np.argsort(stream.P_)[-1]
 
         ##############
@@ -278,14 +281,14 @@ cap.release()
 cols = ['p1.x','p1.y','p2.x', 'p2.y']
 
 results = pd.DataFrame(data, columns=cols)
-results.to_csv("recorded_data/headpose_test.csv")
+results.to_csv("recorded_data/headpose_test.csv", header=cols)
 #results.to_excel("recorded_data/headpose_test.xls")
 print(results.head)
 
 fig, axs = plt.subplots(2, sharex=True, gridspec_kw={'hspace': 0})
 plt.suptitle('Discord (Anomaly/Novelty) Discovery', fontsize='30')
 
-axs[0].plot(results['p1.x'].values)
+axs[0].plot(results['p1.y'].values)
 axs[0].set_ylabel('Bewegung', fontsize='20')
 rect = Rectangle((discord_idx, 0), m, 40, facecolor='lightgrey')
 axs[0].add_patch(rect)
@@ -299,9 +302,9 @@ plt.show()
 # dicord Discovery #
 ####################
 
-mD =  60
-#mp = stumpy.gpu_stump(results["p1.x"].astype(np.float64), m)
-mp = stumpy.stump(results["p1.x"].astype(np.float64), mD)
+mD =  30
+mp = stumpy.gpu_stump(results["p1.y"].astype(np.float64), mD)
+#mp = stumpy.stump(results["p1.x"].astype(np.float64), mD)
 
 discord_idx = np.argsort(mp[:, 0])[-1]
 
@@ -314,7 +317,7 @@ nearest_neighbor_distance = mp[discord_idx, 0]
 fig, axs = plt.subplots(2, sharex=True, gridspec_kw={'hspace': 0})
 plt.suptitle('Discord (Anomaly/Novelty) Discovery', fontsize='30')
 
-axs[0].plot(results['p1.x'].values)
+axs[0].plot(results['p1.y'].values)
 axs[0].set_ylabel('Bewegung', fontsize='20')
 rect = Rectangle((discord_idx, 0), m, 40, facecolor='lightgrey')
 axs[0].add_patch(rect)
