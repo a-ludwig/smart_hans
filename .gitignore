@@ -1,5 +1,6 @@
 code_alt/real_heponet/models/
 headpose_opencv/recorded_data/
+datensammeln/videos
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
