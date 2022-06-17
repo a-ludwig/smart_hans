@@ -1,0 +1,3 @@
+Unterschieldiche Ordner mit Länge der klopfens.
+Geschlecht(m/w/d), Größe(k/n/g), Gesicht frei?(y/n), weitere anmerkungen
+datum/zeit/Target_number/Target_frame/

@@ -10,21 +10,23 @@ from datetime import datetime
 from pip import main
 import time
 import threading
+import os
 
 curr_num = 0
 
 def main():
     
     now = datetime.now()
-    date_time = now.strftime("%m%d%Y_%H:%M:%S")
+    date_time = now.strftime("%m%d%Y_%H%M%S")
     capturestring = ("videos/smart_hans_" + date_time +".avi")
-    duration = 15
+    tap_pause = 1.2
+    duration = 2
     framerate = 30.0
     print(capturestring)
     cap = cv2.VideoCapture(0)
     #Set highest possible resolution
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
     width = cap.get(cv2.CAP_PROP_FRAME_WIDTH )
     height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT )
     print(width)
@@ -32,11 +34,17 @@ def main():
 
     num = int(input("Type in number you think of and press Enter to continue...: "))
 
-    capturestring = ("videos/smart_hans_" + date_time + "_target_number_"+ str(num) + ".avi")
+    path = "videos/pause_" + str(tap_pause) + "/"
+    filename = "smart_hans_" + date_time + "_target_number_"+ str(num) + ".avi"
+
+    if( not os.path.isdir(path) ):
+        os.mkdir(path)
+
+    capturestring = (path + filename)
 
     # multithreading:
     print("Main    : before creating thread")
-    thread_play_tap = threading.Thread(target=playTap, args=(num,))
+    thread_play_tap = threading.Thread(target=playTap, args=(num,tap_pause))
     #thread_play_tap.isDaemon()
     thread_record = threading.Thread(target=recordVideo, args=(cap, capturestring, duration,framerate))
     print("Main    : before running thread")
@@ -50,13 +58,11 @@ def main():
     #recordVideo(cap, capturestring, duration,  framerate)
   #  from datetime import datetime
 
-def playTap(num):
+def playTap(num, tap_pause):
     global curr_num
     
-
-    
     for i in range(num):
-        time.sleep(1.2)
+        time.sleep(tap_pause)
         try:
             vs = cv2.VideoCapture("HANS_Repo\datensammeln\Horse_Tapping_One_Tap.mp4")
         except:
@@ -66,7 +72,7 @@ def playTap(num):
 
             try:
                 #cv2.startWindowThread()
-                img = imutils.resize(img, width=380)
+                img = imutils.resize(img, width=480)
                 
                 cv2.imshow("Horse Tapping", img)
                 cv2.setWindowProperty("Horse Tapping", cv2.WND_PROP_TOPMOST, 1)
@@ -80,8 +86,6 @@ def playTap(num):
     #cv2.destroyAllWindows();
 
 
-    
-
 def recordVideo(cap, capturestring, duration, framerate):
     
     #Define amount of Frames to Record
@@ -89,11 +93,10 @@ def recordVideo(cap, capturestring, duration, framerate):
 
 # Define the codec and create VideoWriter object
     fourcc = cv2.VideoWriter_fourcc(*'MJPG')
-    frameNP = np.zeros(shape=(frames_to_record,720,1280,3),dtype=np.uint8)
-    out = cv2.VideoWriter(capturestring, fourcc, 30.0, (1280,  720))
+    frameNP = np.zeros(shape=(frames_to_record,1080,1920,3),dtype=np.uint8)
+    out = cv2.VideoWriter(capturestring, fourcc, 30.0, (1920,  1080))
     
-   
-
+    
     i = 0
     while cap.isOpened():
         ret, frame = cap.read()
@@ -119,12 +122,10 @@ def recordVideo(cap, capturestring, duration, framerate):
         if i >= frames_to_record:
             break
     # Release everything if job is finished
-    print(frameNP[0])
     print(frameNP[0].shape)
     cap.release()
 
     for frame in frameNP:
-        print(frame.shape)
         out.write(frame)
     out.release()    
 
