@@ -58,6 +58,36 @@ def main():
 def playTap(num, tap_pause):
     global curr_num, start
 
+    # def im_show(img, name, time):
+    #  cv2.namedWindow(name)
+    #  cv2.moveWindow(name, 900,-900)
+    #  cv2.imshow(name, img)
+    #  cv2.waitKey(time)
+    # return
+
+    
+
+    # while not start:
+
+    #     try:
+    #         vs = cv2.VideoCapture("HANS_Repo\datensammeln\Looking_Around.mp4")
+    #     except:
+    #         print("Video file not found")
+    #     ret, img = vs.read()
+
+    #     try:
+    #             #cv2.startWindowThread()
+    #             img = imutils.resize(img, width=480)
+                
+    #             cv2.imshow("Horse Tapping", img)
+    #             cv2.setWindowProperty("Horse Tapping", cv2.WND_PROP_TOPMOST, 1)
+                
+    #             cv2.waitKey(1)
+    #     except:
+    #         break
+        
+
+
     for i in range(num+3):
         time.sleep(tap_pause)
         try:
