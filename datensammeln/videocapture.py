@@ -13,16 +13,13 @@ import threading
 import os
 
 curr_num = 0
-
+start = False
 def main():
     
-    now = datetime.now()
-    date_time = now.strftime("%m%d%Y_%H%M%S")
-    capturestring = ("videos/smart_hans_" + date_time +".avi")
     tap_pause = 1.2
     duration = 2
     framerate = 30.0
-    print(capturestring)
+    
     cap = cv2.VideoCapture(0)
     #Set highest possible resolution
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
@@ -32,21 +29,21 @@ def main():
     print(width)
     print(height)
 
+    print("Please type acronym for: Geschlecht(m/w/d), Größe(k/n/g), Gesicht frei?(y/n)")
+    kennung = input()
+
     num = int(input("Type in number you think of and press Enter to continue...: "))
 
     path = "videos/pause_" + str(tap_pause) + "/"
-    filename = "smart_hans_" + date_time + "_target_number_"+ str(num) + ".avi"
-
-    if( not os.path.isdir(path) ):
+    
+    if( not os.path.isdir(path)):
         os.mkdir(path)
-
-    capturestring = (path + filename)
 
     # multithreading:
     print("Main    : before creating thread")
     thread_play_tap = threading.Thread(target=playTap, args=(num,tap_pause))
     #thread_play_tap.isDaemon()
-    thread_record = threading.Thread(target=recordVideo, args=(cap, capturestring, duration,framerate))
+    thread_record = threading.Thread(target=recordVideo, args=(cap, duration, framerate, num, tap_pause, path, kennung))
     print("Main    : before running thread")
     thread_play_tap.start()
     thread_record.start()
@@ -59,8 +56,8 @@ def main():
   #  from datetime import datetime
 
 def playTap(num, tap_pause):
-    global curr_num
-    
+    global curr_num, start
+
     for i in range(num):
         time.sleep(tap_pause)
         try:
@@ -85,18 +82,29 @@ def playTap(num, tap_pause):
     vs.release()
     #cv2.destroyAllWindows();
 
+def createFilename(infos):
+    filename = "smart_hans"
+    for info in infos:
+        filename = filename + "_" + str(info)
+    filename = filename + ".avi"
+    return filename
 
-def recordVideo(cap, capturestring, duration, framerate):
+
+def recordVideo(cap, duration, framerate, num, tap_pause, path, kennung):
+
+    now = datetime.now()
+    date_time = now.strftime("%m%d%Y_%H%M%S")
     
     #Define amount of Frames to Record
     frames_to_record = int(duration*framerate)
 
-# Define the codec and create VideoWriter object
+    # Define the codec and create VideoWriter object
     fourcc = cv2.VideoWriter_fourcc(*'MJPG')
     frameNP = np.zeros(shape=(frames_to_record,1080,1920,3),dtype=np.uint8)
-    out = cv2.VideoWriter(capturestring, fourcc, 30.0, (1920,  1080))
+    targetFrame = 0
     
     
+
     i = 0
     while cap.isOpened():
         ret, frame = cap.read()
@@ -124,6 +132,16 @@ def recordVideo(cap, capturestring, duration, framerate):
     # Release everything if job is finished
     print(frameNP[0].shape)
     cap.release()
+    anmerkungen = input("Anmerkungen?: ")
+
+    infos = [date_time, num, targetFrame, tap_pause, kennung, anmerkungen]
+
+    filename = createFilename(infos)
+    capturestring = (path + filename)
+
+
+    print(capturestring)
+    out = cv2.VideoWriter(capturestring, fourcc, 30.0, (1920,  1080))
 
     for frame in frameNP:
         out.write(frame)
