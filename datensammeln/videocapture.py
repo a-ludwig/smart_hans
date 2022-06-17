@@ -12,6 +12,16 @@ import time
 import threading
 import os
 
+def extract_image_from_video(video_file):
+    cap = cv2.VideoCapture(video_file)
+    success = True
+    while success:
+        success, image = cap.read()
+        if image is None:
+            continue
+        yield image
+    cap.release()
+
 curr_num = 0
 start = False
 def main():
