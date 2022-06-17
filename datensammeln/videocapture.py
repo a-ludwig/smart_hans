@@ -16,8 +16,8 @@ curr_num = 0
 start = False
 def main():
     
-    tap_pause = 1.2
-    duration = 2
+    tap_pause = 0.8
+    duration = 10
     framerate = 30.0
     
     cap = cv2.VideoCapture(0)
@@ -58,7 +58,7 @@ def main():
 def playTap(num, tap_pause):
     global curr_num, start
 
-    for i in range(num):
+    for i in range(num+3):
         time.sleep(tap_pause)
         try:
             vs = cv2.VideoCapture("HANS_Repo\datensammeln\Horse_Tapping_One_Tap.mp4")
@@ -101,7 +101,7 @@ def recordVideo(cap, duration, framerate, num, tap_pause, path, kennung):
     # Define the codec and create VideoWriter object
     fourcc = cv2.VideoWriter_fourcc(*'MJPG')
     frameNP = np.zeros(shape=(frames_to_record,1080,1920,3),dtype=np.uint8)
-    targetFrame = 0
+    targetFrame = []
     
     
 
@@ -121,7 +121,10 @@ def recordVideo(cap, duration, framerate, num, tap_pause, path, kennung):
         cv2.putText(frame, "current number: " + str(curr_num), [400,100], cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 3)
         cv2.imshow('frame', frame)
         cv2.setWindowProperty("frame", cv2.WND_PROP_TOPMOST, 2)
-        
+
+        if curr_num == num or curr_num == num-1:
+            targetFrame.append(str(i))
+
         if cv2.waitKey(1) == ord('q'):
             break
         i+=1
@@ -134,7 +137,7 @@ def recordVideo(cap, duration, framerate, num, tap_pause, path, kennung):
     cap.release()
     anmerkungen = input("Anmerkungen?: ")
 
-    infos = [date_time, num, targetFrame, tap_pause, kennung, anmerkungen]
+    infos = [date_time, num, targetFrame[0] + "-" + targetFrame[-1], tap_pause, kennung, anmerkungen]
 
     filename = createFilename(infos)
     capturestring = (path + filename)
