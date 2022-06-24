@@ -11,6 +11,7 @@ from pip import main
 import time
 import threading
 import os
+from ffpyplayer.player import MediaPlayer
 
 def extract_image_from_video(video_file):
     cap = cv2.VideoCapture(video_file)
@@ -49,70 +50,85 @@ def main():
     if( not os.path.isdir(path)):
         os.mkdir(path)
 
+    duration = num+4 * (tap_pause+1)
+
     # multithreading:
     print("Main    : before creating thread")
+
     thread_play_tap = threading.Thread(target=playTap, args=(num,tap_pause))
-    #thread_play_tap.isDaemon()
     thread_record = threading.Thread(target=recordVideo, args=(cap, duration, framerate, num, tap_pause, path, kennung))
     print("Main    : before running thread")
-    thread_play_tap.start()
+
+    playIdle()
     thread_record.start()
+    thread_play_tap.start()
+    
     print("Main    : wait for the thread to finish")
-    #thread_play_tap.join()
+    print("Main    : before running thread")
     print("Main    : all done")
     
-    
-    #recordVideo(cap, capturestring, duration,  framerate)
-  #  from datetime import datetime
 
-def playTap(num, tap_pause):
-    global curr_num, start
-
-    # def im_show(img, name, time):
+# def im_show(img, name, time):
     #  cv2.namedWindow(name)
     #  cv2.moveWindow(name, 900,-900)
     #  cv2.imshow(name, img)
     #  cv2.waitKey(time)
+
     # return
 
+def playIdle():
+    #while True: 
+    vc = cv2.VideoCapture("HANS_Repo\datensammeln\Looking_Around.mp4")
     
+    while True:
+        ret, img = vc.read()
+        try:
+            #cv2.startWindowThread()
+            img = imutils.resize(img, height=1536)
+            cv2.namedWindow("Horse Idle", cv2.WND_PROP_FULLSCREEN)      
+            cv2.setWindowProperty("Horse Idle", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+            cv2.moveWindow("Horse Idle", 2560, 0)
 
-    # while not start:
+            
+            cv2.imshow("Horse Idle", img)
+            cv2.setWindowProperty("Horse Idle", cv2.WND_PROP_TOPMOST, 1)
+            
+            cv2.waitKey(1)
+        except:
+            break
 
-    #     try:
-    #         vs = cv2.VideoCapture("HANS_Repo\datensammeln\Looking_Around.mp4")
-    #     except:
-    #         print("Video file not found")
-    #     ret, img = vs.read()
+        if cv2.waitKey(1) == ord('q'):
+            break  
+    vc.release()
+    cv2.destroyWindow("Horse Idle")
 
-    #     try:
-    #             #cv2.startWindowThread()
-    #             img = imutils.resize(img, width=480)
-                
-    #             cv2.imshow("Horse Tapping", img)
-    #             cv2.setWindowProperty("Horse Tapping", cv2.WND_PROP_TOPMOST, 1)
-                
-    #             cv2.waitKey(1)
-    #     except:
-    #         break
-        
-
+def playTap(num, tap_pause):
+    global curr_num, start
 
     for i in range(num+3):
         time.sleep(tap_pause)
         try:
-            vs = cv2.VideoCapture("HANS_Repo\datensammeln\Horse_Tapping_One_Tap.mp4")
+            video_path = "HANS_Repo\datensammeln\Horse_Tapping_One_Tap.mp4"
+            vs = cv2.VideoCapture(video_path)
+            #player = MediaPlayer(video_path)
         except:
             print("Video file not found")
         while True:
             ret, img = vs.read()
+            #audio_frame, val = player.get_frame()
 
             try:
                 #cv2.startWindowThread()
-                img = imutils.resize(img, width=480)
+                img = imutils.resize(img, height=1536)
+                cv2.namedWindow("Horse Tapping", cv2.WND_PROP_FULLSCREEN)      
+                cv2.setWindowProperty("Horse Tapping", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+                cv2.moveWindow("Horse Tapping", 2560, 0)
                 
                 cv2.imshow("Horse Tapping", img)
                 cv2.setWindowProperty("Horse Tapping", cv2.WND_PROP_TOPMOST, 1)
+                #if val != 'eof' and audio_frame is not None:
+                    #audio
+                #    img, t = audio_frame
                 
                 cv2.waitKey(1)
             except:
@@ -120,7 +136,7 @@ def playTap(num, tap_pause):
         curr_num = i + 1
         
     vs.release()
-    #cv2.destroyAllWindows();
+
 
 def createFilename(infos):
     filename = "smart_hans"
@@ -131,7 +147,7 @@ def createFilename(infos):
 
 
 def recordVideo(cap, duration, framerate, num, tap_pause, path, kennung):
-
+    global curr_num
     now = datetime.now()
     date_time = now.strftime("%m%d%Y_%H%M%S")
     
@@ -154,8 +170,7 @@ def recordVideo(cap, duration, framerate, num, tap_pause, path, kennung):
         if not ret:
             print("Can't receive frame (stream end?). Exiting ...")
             break
-       # frame = cv2.flip(frame, 1)
-        # write the flipped frame
+
         frameNP[i]=frame
         cv2.putText(frame, str(i), [300,100], cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 3)
         cv2.putText(frame, "current number: " + str(curr_num), [400,100], cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 3)
@@ -168,7 +183,6 @@ def recordVideo(cap, duration, framerate, num, tap_pause, path, kennung):
         if cv2.waitKey(1) == ord('q'):
             break
         i+=1
-        print(i)
        
         if i >= frames_to_record:
             break
