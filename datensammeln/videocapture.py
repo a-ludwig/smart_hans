@@ -13,6 +13,9 @@ import threading
 import os
 from ffpyplayer.player import MediaPlayer
 
+
+debug = True
+
 def extract_image_from_video(video_file):
     cap = cv2.VideoCapture(video_file)
     success = True
@@ -84,10 +87,12 @@ def playIdle():
         ret, img = vc.read()
         try:
             #cv2.startWindowThread()
-            img = imutils.resize(img, height=1536)
-            cv2.namedWindow("Horse Idle", cv2.WND_PROP_FULLSCREEN)      
-            cv2.setWindowProperty("Horse Idle", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-            cv2.moveWindow("Horse Idle", 2560, 0)
+
+            if not debug:
+                img = imutils.resize(img, height=1536)
+                cv2.namedWindow("Horse Idle", cv2.WND_PROP_FULLSCREEN)      
+                cv2.setWindowProperty("Horse Idle", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+                cv2.moveWindow("Horse Idle", 2560, 0)
 
             
             cv2.imshow("Horse Idle", img)
@@ -119,10 +124,11 @@ def playTap(num, tap_pause):
 
             try:
                 #cv2.startWindowThread()
-                img = imutils.resize(img, height=1536)
-                cv2.namedWindow("Horse Tapping", cv2.WND_PROP_FULLSCREEN)      
-                cv2.setWindowProperty("Horse Tapping", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-                cv2.moveWindow("Horse Tapping", 2560, 0)
+                if not debug:
+                    img = imutils.resize(img, height=1536)
+                    cv2.namedWindow("Horse Tapping", cv2.WND_PROP_FULLSCREEN)      
+                    cv2.setWindowProperty("Horse Tapping", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+                    cv2.moveWindow("Horse Tapping", 2560, 0)
                 
                 cv2.imshow("Horse Tapping", img)
                 cv2.setWindowProperty("Horse Tapping", cv2.WND_PROP_TOPMOST, 1)
