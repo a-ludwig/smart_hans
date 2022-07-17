@@ -56,6 +56,27 @@ def main():
 
     duration = num+4 * (tap_pause+1)
 
+    # vlc stuff
+
+    #create instance
+    vlc_inst_idle = vlc.Instance('--no-video-title-show', '--fullscreen', '--mouse-hide-timeout=0')
+    
+
+    # #create medialist_player
+    # media_list_player = vlc.MediaListPlayer(vlc_inst)
+
+    # #create mediaList
+    # media_list = vlc.MediaList(['Looking_Around.mp4','Horse_Tapping_One_Tap.mp4'])
+    # media_list_player.set_media_list(media_list)
+
+    # media_list_player.play_item_at_index(0)
+    vlc_player_idle = vlc.MediaPlayer (vlc_inst_idle,'Looking_Around.mp4')
+    print(vlc_player_idle.get_xwindow())
+
+    
+
+    #create_medialist
+
     # multithreading:
     print("Main    : before creating thread")
 
@@ -63,7 +84,12 @@ def main():
     thread_record = threading.Thread(target=recordVideo, args=(cap, duration, framerate, num, tap_pause, path, kennung))
     print("Main    : before running thread")
 
-    playIdle()
+    #playIdle(vlc_inst)
+    vlc_player_idle.play()
+    time.sleep(0.5)
+    while vlc_player_idle.is_playing():
+        print("i'm just waiting for all of this to pass by - horse noise")
+        print(vlc_player_idle.get_xwindow())
     thread_record.start()
     thread_play_tap.start()
     
@@ -80,20 +106,19 @@ def main():
 
     # return
 
-def playIdle():
+# Currently not used
+def playIdle(vlc_instance):
     #while True: 
-    vc = cv2.VideoCapture("HANS_Repo\datensammeln\Looking_Around.mp4")
+    vc = cv2.VideoCapture("Looking_Around.mp4")
     
-    vlc_inst = vlc.Instance('--input-repeat=0', '--no-video-title-show', '--fullscreen', '--mouse-hide-timeout=0')
-
-    media = vlc.MediaPlayer(vlc_inst, "HANS_Repo\datensammeln\Looking_Around.mp4")
-    media.play()
+    player_idle = vlc.MediaPlayer(vlc_instance, "Looking_Around.mp4")
+    player_idle.play()
     
 
-    time.sleep(2)
-    print("is playing " + str(media.is_playing()))
+    time.sleep(0.4)
+    print("is playing " + str(player_idle.is_playing()))
     while True:
-        if media.is_playing() == 0:
+        if player_idle.is_playing() == 0:
             break
 
     # while True:
@@ -125,10 +150,11 @@ def playIdle():
 def playTap(num, tap_pause):
     global curr_num, start
     extra_taps = 3
-    vlc_inst = vlc.Instance('--input-repeat='+str(num+3), '--no-video-title-show', '--fullscreen', '--mouse-hide-timeout=0')
+    
 
-    media = vlc.MediaPlayer(vlc_inst, "HANS_Repo\datensammeln\Horse_Tapping_One_Tap.mp4")
-    media.play()
+    vlc_inst_tap = vlc.Instance('--input-repeat='+str(num+extra_taps), '--no-video-title-show', '--fullscreen', '--mouse-hide-timeout=0')
+    vlc_player_tap = vlc.MediaPlayer(vlc_inst_tap,"Horse_Tapping_One_Tap.mp4")
+    vlc_player_tap.play()
 
     # for i in range(num+3):
     #     time.sleep(tap_pause)
