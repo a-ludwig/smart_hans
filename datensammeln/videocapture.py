@@ -4,7 +4,7 @@
 import enum
 import numpy as np
 import imutils
-#import keyboard
+import keyboard
 import cv2
 from datetime import datetime
 from pip import main
@@ -56,40 +56,25 @@ def main():
 
     duration = num+4 * (tap_pause+1)
 
-    # vlc stuff
+    #############
+    # vlc stuff #
+    #############
 
     #create instance
-    vlc_inst_idle = vlc.Instance('--no-video-title-show', '--fullscreen', '--mouse-hide-timeout=0')
+    vlc_inst = vlc.Instance('--no-video-title-show', '--fullscreen','--video-on-top', '--mouse-hide-timeout=0')
+    #create media_player
+    vlc_inst = vlc.MediaPlayer(vlc_inst)
+    vlc_inst.set_fullscreen(True)
     
-
-    # #create medialist_player
-    # media_list_player = vlc.MediaListPlayer(vlc_inst)
-
-    # #create mediaList
-    # media_list = vlc.MediaList(['Looking_Around.mp4','Horse_Tapping_One_Tap.mp4'])
-    # media_list_player.set_media_list(media_list)
-
-    # media_list_player.play_item_at_index(0)
-    vlc_player_idle = vlc.MediaPlayer (vlc_inst_idle,'Looking_Around.mp4')
-    print(vlc_player_idle.get_xwindow())
-
-    
-
-    #create_medialist
-
     # multithreading:
     print("Main    : before creating thread")
 
-    thread_play_tap = threading.Thread(target=playTap, args=(num,tap_pause))
+    thread_play_tap = threading.Thread(target=playTap, args=(num,tap_pause, vlc_inst))
     thread_record = threading.Thread(target=recordVideo, args=(cap, duration, framerate, num, tap_pause, path, kennung))
     print("Main    : before running thread")
 
-    #playIdle(vlc_inst)
-    vlc_player_idle.play()
-    time.sleep(0.5)
-    while vlc_player_idle.is_playing():
-        print("i'm just waiting for all of this to pass by - horse noise")
-        print(vlc_player_idle.get_xwindow())
+    playIdle(vlc_inst)
+
     thread_record.start()
     thread_play_tap.start()
     
@@ -107,87 +92,45 @@ def main():
     # return
 
 # Currently not used
-def playIdle(vlc_instance):
-    #while True: 
-    vc = cv2.VideoCapture("Looking_Around.mp4")
-    
-    player_idle = vlc.MediaPlayer(vlc_instance, "Looking_Around.mp4")
-    player_idle.play()
-    
 
-    time.sleep(0.4)
-    print("is playing " + str(player_idle.is_playing()))
+def playIdle(vlc_instance):
+    playing = True
+    media = vlc.Media("Looking_Around.mp4")
+    vlc_instance.set_media(media)
+    vlc_instance.play()
+
     while True:
-        if player_idle.is_playing() == 0:
+        if vlc_instance.is_playing() == 0:
             break
 
-    # while True:
-    #     ret, img = vc.read()
-    #     try:
-    #         #cv2.startWindowThread()
+    while playing:
+        vlc_instance.set_media(media)
+        vlc_instance.play()
 
-    #         if not debug:
-    #             img = imutils.resize(img, height=1536)
-    #             cv2.namedWindow("Horse Idle", cv2.WND_PROP_FULLSCREEN)      
-    #             cv2.setWindowProperty("Horse Idle", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-    #             cv2.moveWindow("Horse Idle", 2560, 0)
+        time.sleep(0.2)
+        while True:
+            if keyboard.is_pressed('q'):  # if key 'q' is pressed 
+                print('You Pressed A Key!')
+                playing = False
+            if vlc_instance.is_playing() == 0:
+                break
 
-            
-    #         cv2.imshow("Horse Idle", img)
-    #         cv2.setWindowProperty("Horse Idle", cv2.WND_PROP_TOPMOST, 1)
-            
-    #         cv2.waitKey(1)
-    #     except:
-    #         break
-
-    #     if cv2.waitKey(1) == ord('q'):
-    #         break  
-    # vc.release()
-    # cv2.destroyWindow("Horse Idle")
-
-
-
-def playTap(num, tap_pause):
+def playTap(num, tap_pause, vlc_instance):
     global curr_num, start
     extra_taps = 3
     
+    media = vlc.Media("Horse_Tapping_One_Tap.mp4")
+    
+    for i in range(num+extra_taps):
+        vlc_instance.set_media(media)
+        vlc_instance.play()
 
-    vlc_inst_tap = vlc.Instance('--input-repeat='+str(num+extra_taps), '--no-video-title-show', '--fullscreen', '--mouse-hide-timeout=0')
-    vlc_player_tap = vlc.MediaPlayer(vlc_inst_tap,"Horse_Tapping_One_Tap.mp4")
-    vlc_player_tap.play()
-
-    # for i in range(num+3):
-    #     time.sleep(tap_pause)
-    #     try:
-    #         video_path = "HANS_Repo\datensammeln\Horse_Tapping_One_Tap.mp4"
-    #         vs = cv2.VideoCapture(video_path)
-    #         #player = MediaPlayer(video_path)
-    #     except:
-    #         print("Video file not found")
-    #     while True:
-    #         ret, img = vs.read()
-    #         #audio_frame, val = player.get_frame()
-
-    #         try:
-    #             #cv2.startWindowThread()
-    #             if not debug:
-    #                 img = imutils.resize(img, height=1536)
-    #                 cv2.namedWindow("Horse Tapping", cv2.WND_PROP_FULLSCREEN)      
-    #                 cv2.setWindowProperty("Horse Tapping", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-    #                 cv2.moveWindow("Horse Tapping", 2560, 0)
-                
-    #             cv2.imshow("Horse Tapping", img)
-    #             cv2.setWindowProperty("Horse Tapping", cv2.WND_PROP_TOPMOST, 1)
-    #             #if val != 'eof' and audio_frame is not None:
-    #                 #audio
-    #             #    img, t = audio_frame
-                
-    #             cv2.waitKey(1)
-    #         except:
-    #             break
-    #     curr_num = i + 1
-        
-    # vs.release()
+        time.sleep(0.2)
+        while True:
+            if vlc_instance.is_playing() == 0:
+                break
+        curr_num = i + 1
+    playIdle(vlc_instance)
 
 
 def createFilename(infos):
