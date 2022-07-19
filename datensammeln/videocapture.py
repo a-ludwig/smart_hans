@@ -95,7 +95,7 @@ def main():
 
 def playIdle(vlc_instance):
     playing = True
-    media = vlc.Media("Looking_Around.mp4")
+    media = vlc.Media("static.mp4")
     vlc_instance.set_media(media)
     vlc_instance.play()
 
@@ -119,7 +119,11 @@ def playTap(num, tap_pause, vlc_instance):
     global curr_num, start
     extra_taps = 3
     
-    media = vlc.Media("Horse_Tapping_One_Tap.mp4")
+    media = vlc.Media("Horse_Tapping_start.m4v")
+    vlc_instance.set_media(media)
+    vlc_instance.play()
+
+    media = vlc.Media("Horse_Tapping_loop.m4v")
     
     for i in range(num+extra_taps):
         vlc_instance.set_media(media)
@@ -130,7 +134,6 @@ def playTap(num, tap_pause, vlc_instance):
             if vlc_instance.is_playing() == 0:
                 break
         curr_num = i + 1
-    playIdle(vlc_instance)
 
 
 def createFilename(infos):
