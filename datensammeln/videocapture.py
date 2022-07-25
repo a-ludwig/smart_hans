@@ -169,10 +169,9 @@ def recordVideo(cap, duration, framerate, num, tap_pause, path, kennung):
         if not ret:
             print("Can't receive frame (stream end?). Exiting ...")
             break
-
         frameNP[i]=frame
-        cv2.putText(frame, str(i), [300,100], cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 3)
-        cv2.putText(frame, "current number: " + str(curr_num), [400,100], cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 3)
+        # cv2.putText(frame, str(i), [300,100], cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 3)
+        # cv2.putText(frame, "current number: " + str(curr_num), [400,100], cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 3)
         #cv2.imshow('frame', frame)
         #cv2.setWindowProperty("frame", cv2.WND_PROP_TOPMOST, 2)
 
@@ -197,10 +196,10 @@ def recordVideo(cap, duration, framerate, num, tap_pause, path, kennung):
 
 
     print(capturestring)
-    out = cv2.VideoWriter(capturestring, fourcc, 30.0, (1920,  1080))
+    out = cv2.VideoWriter(capturestring, fourcc, 30.0, (1080,  1920))
 
     for frame in frameNP:
-        out.write(frame)
+        out.write(np.rot90(frame))
     out.release()    
 
 if __name__ == "__main__":
