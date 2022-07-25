@@ -3,7 +3,6 @@
 
 import enum
 import numpy as np
-import imutils
 import keyboard
 import cv2
 from datetime import datetime
@@ -11,7 +10,6 @@ from pip import main
 import time
 import threading
 import os
-from ffpyplayer.player import MediaPlayer
 import vlc 
 
 
@@ -27,20 +25,23 @@ def extract_image_from_video(video_file):
         yield image
     cap.release()
 
+
 curr_num = 0
 start = False
 def main():
     
     tap_pause = 0.8
-    duration = 10
+    duration = 5
     framerate = 30.0
     
-    cap = cv2.VideoCapture(0)
+    
+    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
     #Set highest possible resolution
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
     width = cap.get(cv2.CAP_PROP_FRAME_WIDTH )
     height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT )
+    cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
     print(width)
     print(height)
 
@@ -95,7 +96,7 @@ def main():
 
 def playIdle(vlc_instance):
     playing = True
-    media = vlc.Media("static.mp4")
+    media = vlc.Media("Looking_Around.mp4")
     vlc_instance.set_media(media)
     vlc_instance.play()
 
@@ -119,11 +120,11 @@ def playTap(num, tap_pause, vlc_instance):
     global curr_num, start
     extra_taps = 3
     
-    media = vlc.Media("Horse_Tapping_start.m4v")
-    vlc_instance.set_media(media)
-    vlc_instance.play()
+    # media = vlc.Media("Horse_Tapping_start.m4v")
+    # vlc_instance.set_media(media)
+    # vlc_instance.play()
 
-    media = vlc.Media("Horse_Tapping_loop.m4v")
+    media = vlc.Media("Horse_Tapping_One_Tap.mp4")
     
     for i in range(num+extra_taps):
         vlc_instance.set_media(media)
@@ -172,8 +173,8 @@ def recordVideo(cap, duration, framerate, num, tap_pause, path, kennung):
         frameNP[i]=frame
         cv2.putText(frame, str(i), [300,100], cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 3)
         cv2.putText(frame, "current number: " + str(curr_num), [400,100], cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 3)
-        #cv2.imshow('frame', frame)
-        #cv2.setWindowProperty("frame", cv2.WND_PROP_TOPMOST, 2)
+        cv2.imshow('frame', frame)
+        cv2.setWindowProperty("frame", cv2.WND_PROP_TOPMOST, 2)
 
         if curr_num == num or curr_num == num-1:
             targetFrame.append(str(i))
