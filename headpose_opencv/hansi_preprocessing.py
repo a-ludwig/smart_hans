@@ -5,11 +5,13 @@ Created on Fri Jul 31 03:00:36 2020
 @author: hp
 """
 
+from inspect import ArgSpec
 from telnetlib import theNULL
 import cv2
 import numpy as np
 import math
 import os
+import sys
 from sklearn.model_selection import StratifiedShuffleSplit
 from face_detector import get_face_detector, find_faces
 from face_landmarks import get_landmark_model, detect_marks
@@ -136,165 +138,180 @@ def head_pose_points(img, rotation_vector, translation_vector, camera_matrix):
     x = point_2d[2]
     
     return (x, y)
-    
-face_model = get_face_detector()
-landmark_model = get_landmark_model()
-path = "/Users/adi/Documents/code/smart_hans/datensammeln/videos/pause_0.8"
-font = cv2.FONT_HERSHEY_SIMPLEX 
 
-##############
-# Pandas Stuff
-##############
-df = pd.DataFrame()
-data = [] 
-
-# 3D model points.
-model_points = np.array([
-                            (0.0, 0.0, 0.0),             # Nose tip
-                            (0.0, -330.0, -65.0),        # Chin
-                            (-225.0, 170.0, -135.0),     # Left eye left corner
-                            (225.0, 170.0, -135.0),      # Right eye right corne
-                            (-150.0, -150.0, -125.0),    # Left Mouth corner
-                            (150.0, -150.0, -125.0)      # Right mouth corner
-                        ])
+def main (args):
+    face_model = get_face_detector()
+    landmark_model = get_landmark_model()
 
 
+    print(args)
+    if len(args) >=3 :   
+        path =args[1]
+        out = args[2]
+    else : 
+        print("please add a path for input and output to running this script")
+        exit()
+
+    if not os.path.exists(out):
+       os.makedirs(out)
+
+    #path = "/Users/adi/Documents/code/smart_hans/datensammeln/videos/pause_0.8"
+    font = cv2.FONT_HERSHEY_SIMPLEX 
+
+    ##############
+    # Pandas Stuff
+    ##############
+    df = pd.DataFrame()
+    data = [] 
+
+    # 3D model points.
+    model_points = np.array([
+                                (0.0, 0.0, 0.0),             # Nose tip
+                                (0.0, -330.0, -65.0),        # Chin
+                                (-225.0, 170.0, -135.0),     # Left eye left corner
+                                (225.0, 170.0, -135.0),      # Right eye right corne
+                                (-150.0, -150.0, -125.0),    # Left Mouth corner
+                                (150.0, -150.0, -125.0)      # Right mouth corner
+                            ])
 
 
-for file in os.listdir(path) :
-    data = []
-    print(file)
-    start_annot = int(file.split("_")[5].split("-")[0])
-    end_annot = int(file.split("_")[5].split("-")[1])
-    cap = cv2.VideoCapture(path+"/"+file)
-    ret, img = cap.read()
-    size = img.shape
-    # Camera internals
-    focal_length = size[1]
-    center = (size[1]/2, size[0]/2)
-    camera_matrix = np.array(
-                            [[focal_length, 0, center[0]],
-                            [0, focal_length, center[1]],
-                            [0, 0, 1]], dtype = "double"
-                            )
-    while True:
+
+
+    for file in os.listdir(path) :
+        data = []
+        print(file)
+        start_annot = int(file.split("_")[5].split("-")[0])
+        end_annot = int(file.split("_")[5].split("-")[1])
+        cap = cv2.VideoCapture(path+"/"+file)
         ret, img = cap.read()
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        if ret == True:
-            faces = find_faces(img, face_model)
-            for face in faces:
-                marks = detect_marks(img, landmark_model, face)
-                # mark_detector.draw_marks(img, marks, color=(0, 255, 0))
-                image_points = np.array([
-                                        marks[30],     # Nose tip
-                                        marks[8],     # Chin
-                                        marks[36],     # Left eye left corner
-                                        marks[45],     # Right eye right corne
-                                        marks[48],     # Left Mouth corner
-                                        marks[54]      # Right mouth corner
-                                    ], dtype="double")
-                dist_coeffs = np.zeros((4,1)) # Assuming no lens distortion
-                (success, rotation_vector, translation_vector) = cv2.solvePnP(model_points, image_points, camera_matrix, dist_coeffs, flags=cv2.SOLVEPNP_UPNP)
-                
-                
-                # Project a 3D point (0, 0, 1000.0) onto the image plane.
-                # We use this to draw a line sticking out of the nose
-                
-                (nose_end_point2D, jacobian) = cv2.projectPoints(np.array([(0.0, 0.0, 1000.0)]), rotation_vector, translation_vector, camera_matrix, dist_coeffs)
-                
-                for p in image_points:
-                    cv2.circle(img, (int(p[0]), int(p[1])), 3, (0,0,255), -1)
-                
-                
-                p1 = ( int(image_points[0][0]), int(image_points[0][1]))
-                p2 = ( int(nose_end_point2D[0][0][0]), int(nose_end_point2D[0][0][1]))
-                x1, x2 = head_pose_points(img, rotation_vector, translation_vector, camera_matrix)
-
-                cv2.line(img, p1, p2, (0, 255, 255), 2)
-                
-                #cv2.line(img, tuple(x1), tuple(x2), (255, 255, 0), 2)
-                # for (x, y) in marks:
-                #     cv2.circle(img, (x, y), 4, (255, 255, 0), -1)
-                # cv2.putText(img, str(p1), p1, font, 1, (0, 255, 255), 1)
-                try:
-                    m = (p2[1] - p1[1])/(p2[0] - p1[0])
-                    ang1 = int(math.degrees(math.atan(m)))
-                except:
-                    ang1 = 90
+        size = img.shape
+        # Camera internals
+        focal_length = size[1]
+        center = (size[1]/2, size[0]/2)
+        camera_matrix = np.array(
+                                [[focal_length, 0, center[0]],
+                                [0, focal_length, center[1]],
+                                [0, 0, 1]], dtype = "double"
+                                )
+        while True:
+            ret, img = cap.read()
+            fps = cap.get(cv2.CAP_PROP_FPS)
+            if ret == True:
+                faces = find_faces(img, face_model)
+                for face in faces:
+                    marks = detect_marks(img, landmark_model, face)
+                    # mark_detector.draw_marks(img, marks, color=(0, 255, 0))
+                    image_points = np.array([
+                                            marks[30],     # Nose tip
+                                            marks[8],     # Chin
+                                            marks[36],     # Left eye left corner
+                                            marks[45],     # Right eye right corne
+                                            marks[48],     # Left Mouth corner
+                                            marks[54]      # Right mouth corner
+                                        ], dtype="double")
+                    dist_coeffs = np.zeros((4,1)) # Assuming no lens distortion
+                    (success, rotation_vector, translation_vector) = cv2.solvePnP(model_points, image_points, camera_matrix, dist_coeffs, flags=cv2.SOLVEPNP_UPNP)
                     
-                try:
-                    m = (x2[1] - x1[1])/(x2[0] - x1[0])
-                    ang2 = int(math.degrees(math.atan(-1/m)))
-                except:
-                    ang2 = 90
                     
-                # print('div by zero error')
-                # if ang1 >= 48:
-                #     print('Head down')
-                #     cv2.putText(img, 'Head down', (30, 30), font, 2, (255, 255, 128), 3)
-                # elif ang1 <= -48:
-                #     print('Head up')
-                #     cv2.putText(img, 'Head up', (30, 30), font, 2, (255, 255, 128), 3)
-                
-                # if ang2 >= 48:
-                #     print('Head right')
-                #     cv2.putText(img, 'Head right', (90, 30), font, 2, (255, 255, 128), 3)
-                # elif ang2 <= -48:
-                #     print('Head left')
-                #     cv2.putText(img, 'Head left', (90, 30), font, 2, (255, 255, 128), 3)
-                
-                cv2.putText(img, str(ang1), tuple(p1), font, 2, (128, 255, 255), 3)
-                cv2.putText(img, str(ang2), tuple(x1), font, 2, (255, 255, 128), 3)
-                cv2.putText(img, str(fps), [100,100], font, 2, (255, 0, 0), 3)
+                    # Project a 3D point (0, 0, 1000.0) onto the image plane.
+                    # We use this to draw a line sticking out of the nose
+                    
+                    (nose_end_point2D, jacobian) = cv2.projectPoints(np.array([(0.0, 0.0, 1000.0)]), rotation_vector, translation_vector, camera_matrix, dist_coeffs)
+                    
+                    for p in image_points:
+                        cv2.circle(img, (int(p[0]), int(p[1])), 3, (0,0,255), -1)
+                    
+                    
+                    p1 = ( int(image_points[0][0]), int(image_points[0][1]))
+                    p2 = ( int(nose_end_point2D[0][0][0]), int(nose_end_point2D[0][0][1]))
+                    x1, x2 = head_pose_points(img, rotation_vector, translation_vector, camera_matrix)
 
-            #############
-            # Data Collector
-            #############
-            annotate = 0 
-            current_frame = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
-            if current_frame >= start_annot and current_frame <= end_annot :
-                print(" i will annotate at frame "+ str(current_frame))
-                annotate = 1
+                    cv2.line(img, p1, p2, (0, 255, 255), 2)
+                    
+                    #cv2.line(img, tuple(x1), tuple(x2), (255, 255, 0), 2)
+                    # for (x, y) in marks:
+                    #     cv2.circle(img, (x, y), 4, (255, 255, 0), -1)
+                    # cv2.putText(img, str(p1), p1, font, 1, (0, 255, 255), 1)
+                    try:
+                        m = (p2[1] - p1[1])/(p2[0] - p1[0])
+                        ang1 = int(math.degrees(math.atan(m)))
+                    except:
+                        ang1 = 90
+                        
+                    try:
+                        m = (x2[1] - x1[1])/(x2[0] - x1[0])
+                        ang2 = int(math.degrees(math.atan(-1/m)))
+                    except:
+                        ang2 = 90
+                        
+                    # print('div by zero error')
+                    # if ang1 >= 48:
+                    #     print('Head down')
+                    #     cv2.putText(img, 'Head down', (30, 30), font, 2, (255, 255, 128), 3)
+                    # elif ang1 <= -48:
+                    #     print('Head up')
+                    #     cv2.putText(img, 'Head up', (30, 30), font, 2, (255, 255, 128), 3)
+                    
+                    # if ang2 >= 48:
+                    #     print('Head right')
+                    #     cv2.putText(img, 'Head right', (90, 30), font, 2, (255, 255, 128), 3)
+                    # elif ang2 <= -48:
+                    #     print('Head left')
+                    #     cv2.putText(img, 'Head left', (90, 30), font, 2, (255, 255, 128), 3)
+                    
+                    cv2.putText(img, str(ang1), tuple(p1), font, 2, (128, 255, 255), 3)
+                    cv2.putText(img, str(ang2), tuple(x1), font, 2, (255, 255, 128), 3)
+                    cv2.putText(img, str(fps), [100,100], font, 2, (255, 0, 0), 3)
 
-            data.append( {
-                "nosetip_x" : image_points[0][0],
-                "nosetip_y" : image_points[0][1],
-                "chin_x" : image_points[1][0],
-                "chin_y" : image_points[1][1],
-                "left_eye_corner_x" : image_points[2][0],
-                "left_eye_corner_y" : image_points[2][1],
-                "right_eye_corner_x" : image_points[3][0],
-                "right_eye_corner_y" : image_points[3][1],
-                "left_mouth_corner_x" : image_points[4][0],
-                "left_mouth_corner_y" : image_points[4][1],
-                "right_mouth_corner_x" : image_points[5][0],
-                "right_mouth_corner_y" : image_points[5][1],
-                "nose_end_point_x" : p2[0],
-                "nose_end_point_y" : p2[1],
-                "head_pose1_x": x1[0],
-                "head_pose1_y": x1[1],
-                "head_pose2_x": x2[0], 
-                "head_pose2_y": x2[1],
-                "jerk_expected" : annotate
-            } )
-        
-            ##############
-            cv2.imshow('img', img)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                
+                #############
+                # Data Collector
+                #############
+                annotate = 0 
+                current_frame = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
+                if current_frame >= start_annot and current_frame <= end_annot :
+                    print(" i will annotate at frame "+ str(current_frame))
+                    annotate = 1
+
+                data.append( {
+                    "nosetip_x" : image_points[0][0],
+                    "nosetip_y" : image_points[0][1],
+                    "chin_x" : image_points[1][0],
+                    "chin_y" : image_points[1][1],
+                    "left_eye_corner_x" : image_points[2][0],
+                    "left_eye_corner_y" : image_points[2][1],
+                    "right_eye_corner_x" : image_points[3][0],
+                    "right_eye_corner_y" : image_points[3][1],
+                    "left_mouth_corner_x" : image_points[4][0],
+                    "left_mouth_corner_y" : image_points[4][1],
+                    "right_mouth_corner_x" : image_points[5][0],
+                    "right_mouth_corner_y" : image_points[5][1],
+                    "nose_end_point_x" : p2[0],
+                    "nose_end_point_y" : p2[1],
+                    "head_pose1_x": x1[0],
+                    "head_pose1_y": x1[1],
+                    "head_pose2_x": x2[0], 
+                    "head_pose2_y": x2[1],
+                    "jerk_expected" : annotate
+                } )
+            
+                ##############
+                #cv2.imshow('img', img)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    
+                    break
+            else:
+               # print(data)
+                df2 = pd.DataFrame(data)
+                df2.to_csv(out+file.split('.')[0]+file.split('.')[1]+".csv")
                 break
-        else:
-            print(data)
-            df2 = pd.DataFrame(data)
-            df2.to_csv("csv_export/"+file.split('.')[0]+file.split('.')[1]+".csv")
-            break
 
 
-cv2.destroyAllWindows()
-cap.release()
+    cv2.destroyAllWindows()
+    cap.release()
 
 
-
+if __name__=="__main__":
+    main(sys.argv)
 
 
 
