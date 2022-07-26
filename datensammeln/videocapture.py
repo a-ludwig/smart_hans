@@ -1,6 +1,3 @@
-
-
-
 import enum
 import numpy as np
 import keyboard
@@ -31,6 +28,7 @@ start = False
 def main():
     
     tap_pause = 0.8
+    tap_num = 15
     duration = 5
     framerate = 30.0
     
@@ -55,7 +53,7 @@ def main():
     if( not os.path.isdir(path)):
         os.mkdir(path)
 
-    duration = num+4 * (tap_pause+1)
+    duration = tap_num * (tap_pause+1)
 
     #############
     # vlc stuff #
@@ -70,7 +68,7 @@ def main():
     # multithreading:
     print("Main    : before creating thread")
 
-    thread_play_tap = threading.Thread(target=playTap, args=(num,tap_pause, vlc_inst))
+    thread_play_tap = threading.Thread(target=playTap, args=(num,tap_num, vlc_inst))
     thread_record = threading.Thread(target=recordVideo, args=(cap, duration, framerate, num, tap_pause, path, kennung))
     print("Main    : before running thread")
 
@@ -96,7 +94,7 @@ def main():
 
 def playIdle(vlc_instance):
     playing = True
-    media = vlc.Media("Looking_Around.mp4")
+    media = vlc.Media("static_664_1080.mp4")
     vlc_instance.set_media(media)
     vlc_instance.play()
 
@@ -116,17 +114,16 @@ def playIdle(vlc_instance):
             if vlc_instance.is_playing() == 0:
                 break
 
-def playTap(num, tap_pause, vlc_instance):
+def playTap(num, tap_num, vlc_instance):
     global curr_num, start
-    extra_taps = 3
     
-    # media = vlc.Media("Horse_Tapping_start.m4v")
-    # vlc_instance.set_media(media)
-    # vlc_instance.play()
+    media = vlc.Media("Horse_Tapping_start_664_1080.mp4")
+    vlc_instance.set_media(media)
+    vlc_instance.play()
 
-    media = vlc.Media("Horse_Tapping_One_Tap.mp4")
+    media = vlc.Media("Horse_Tapping_Loop_664_1080.mp4")
     
-    for i in range(num+extra_taps):
+    for i in range(tap_num):
         vlc_instance.set_media(media)
         vlc_instance.play()
 
@@ -135,6 +132,9 @@ def playTap(num, tap_pause, vlc_instance):
             if vlc_instance.is_playing() == 0:
                 break
         curr_num = i + 1
+    media = vlc.Media("Static_664_1080.mp4")
+    vlc_instance.set_media(media)
+    vlc_instance.play()
 
 
 def createFilename(infos):
@@ -169,14 +169,13 @@ def recordVideo(cap, duration, framerate, num, tap_pause, path, kennung):
         if not ret:
             print("Can't receive frame (stream end?). Exiting ...")
             break
-
         frameNP[i]=frame
-        cv2.putText(frame, str(i), [300,100], cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 3)
-        cv2.putText(frame, "current number: " + str(curr_num), [400,100], cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 3)
-        cv2.imshow('frame', frame)
-        cv2.setWindowProperty("frame", cv2.WND_PROP_TOPMOST, 2)
+        # cv2.putText(frame, str(i), [300,100], cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 3)
+        # cv2.putText(frame, "current number: " + str(curr_num), [400,100], cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 3)
+        #cv2.imshow('frame', frame)
+        #cv2.setWindowProperty("frame", cv2.WND_PROP_TOPMOST, 2)
 
-        if curr_num == num or curr_num == num-1:
+        if curr_num == num-1:
             targetFrame.append(str(i))
 
         if cv2.waitKey(1) == ord('q'):
@@ -197,10 +196,10 @@ def recordVideo(cap, duration, framerate, num, tap_pause, path, kennung):
 
 
     print(capturestring)
-    out = cv2.VideoWriter(capturestring, fourcc, 30.0, (1920,  1080))
+    out = cv2.VideoWriter(capturestring, fourcc, 30.0, (1080,  1920))
 
     for frame in frameNP:
-        out.write(frame)
+        out.write(np.rot90(frame))
     out.release()    
 
 if __name__ == "__main__":
