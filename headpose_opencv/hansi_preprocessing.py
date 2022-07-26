@@ -5,6 +5,7 @@ Created on Fri Jul 31 03:00:36 2020
 @author: hp
 """
 
+from telnetlib import theNULL
 import cv2
 import numpy as np
 import math
@@ -163,6 +164,8 @@ model_points = np.array([
 for file in os.listdir(path) :
     data = []
     print(file)
+    start_annot = int(file.split("_")[5].split("-")[0])
+    end_annot = int(file.split("_")[5].split("-")[1])
     cap = cv2.VideoCapture(path+"/"+file)
     ret, img = cap.read()
     size = img.shape
@@ -247,7 +250,12 @@ for file in os.listdir(path) :
             #############
             # Data Collector
             #############
-            
+            annotate = 0 
+            current_frame = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
+            if current_frame >= start_annot and current_frame <= end_annot :
+                print(" i will annotate at frame "+ str(current_frame))
+                annotate = 1
+
             data.append( {
                 "nosetip_x" : image_points[0][0],
                 "nosetip_y" : image_points[0][1],
@@ -266,7 +274,8 @@ for file in os.listdir(path) :
                 "head_pose1_x": x1[0],
                 "head_pose1_y": x1[1],
                 "head_pose2_x": x2[0], 
-                "head_pose2_y": x2[1], 
+                "head_pose2_y": x2[1],
+                "jerk_expected" : annotate
             } )
         
             ##############
