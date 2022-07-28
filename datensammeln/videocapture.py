@@ -33,9 +33,9 @@ def main():
     framerate = 30.0
     
     
-    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+    #cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
     # had to be set for Linux
-    #cap = cv2.VideoCapture(0, cv2.CAP_V4L2 )
+    cap = cv2.VideoCapture(0, cv2.CAP_V4L2 )
     #Set highest possible resolution
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
@@ -65,16 +65,24 @@ def main():
     vlc_instance = vlc.Instance('--no-video-title-show', '--fullscreen','--video-on-top', '--mouse-hide-timeout=0')
     
     #get audio_outputs
+    auout_list =vlc.libvlc_audio_output_list_get(vlc_instance)
+    print(auout_list)
     audioutputs = vlc_instance.audio_output_enumerate_devices()
-    audio_out1 = audioutputs[0]['name']
-    audio_out2 = audioutputs[1]['name']
+    print(type(auout_list[1]))
+    print (audioutputs)
+    audio_out1 = audioutputs[1]['name']
+    audio_out2 = audioutputs[3]['name']
+
+    audioutput_device_list = vlc_instance.audio_output_device_list_get(audio_out1)
+    print (audioutput_device_list)
+    
     #create media_players
     player1 = vlc.MediaPlayer(vlc_instance)
     player2 = vlc.MediaPlayer(vlc_instance)
     player1.set_fullscreen(True)
     player2.set_fullscreen(True)
     vlc.libvlc_audio_output_set(player1, audio_out1)
-    vlc.libvlc_audio_output_set(player1, audio_out2)
+    vlc.libvlc_audio_output_set(player2, audio_out2)
     # multithreading:
     print("Main    : before creating thread")
 
@@ -119,9 +127,9 @@ def playIdle(vlc_instance):
         time.sleep(0.2)
         while True:
             ######## have to be root for using keyboard on linux - big nope nope :( #########
-            if keyboard.is_pressed('q'): # if key 'q' is pressed 
-            #if debug: 
-                print('You Pressed A Key!')
+            #if keyboard.is_pressed('q'): # if key 'q' is pressed 
+            if debug: 
+                #print('You Pressed A Key!')
                 playing = False
             if vlc_instance.is_playing() == 0:
                 break
