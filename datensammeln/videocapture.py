@@ -33,9 +33,7 @@ def main():
     framerate = 30.0
     
     
-    #cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-    # had to be set for Linux
-    cap = cv2.VideoCapture(0, cv2.CAP_V4L2 )
+    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
     #Set highest possible resolution
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
@@ -44,61 +42,35 @@ def main():
     cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
     print(width)
     print(height)
-
     print("Please type acronym for: Geschlecht(m/w/d), Größe(k/n/g), Gesicht frei?(y/n)")
     kennung = input()
-
     num = int(input("Type in number you think of and press Enter to continue...: "))
-
     path = "videos/pause_" + str(tap_pause) + "/"
     
     if( not os.path.isdir(path)):
         os.mkdir(path)
-
     duration = tap_num * (tap_pause+1)
-
     #############
     # vlc stuff #
     #############
-
     #create instance
-    vlc_instance = vlc.Instance('--no-video-title-show', '--fullscreen','--video-on-top', '--mouse-hide-timeout=0')
+    vlc_inst = vlc.Instance('--no-video-title-show', '--fullscreen','--video-on-top', '--mouse-hide-timeout=0')
+    #create media_player
+    vlc_inst = vlc.MediaPlayer(vlc_inst)
+    vlc_inst.set_fullscreen(True)
     
-    #get audio_outputs
-    auout_list =vlc.libvlc_audio_output_list_get(vlc_instance)
-    print(auout_list)
-    audioutputs = vlc_instance.audio_output_enumerate_devices()
-    print(type(auout_list[1]))
-    print (audioutputs)
-    audio_out1 = audioutputs[1]['name']
-    audio_out2 = audioutputs[3]['name']
-
-    audioutput_device_list = vlc_instance.audio_output_device_list_get(audio_out1)
-    print (audioutput_device_list)
-    
-    #create media_players
-    player1 = vlc.MediaPlayer(vlc_instance)
-    player2 = vlc.MediaPlayer(vlc_instance)
-    player1.set_fullscreen(True)
-    player2.set_fullscreen(True)
-    vlc.libvlc_audio_output_set(player1, audio_out1)
-    vlc.libvlc_audio_output_set(player2, audio_out2)
     # multithreading:
     print("Main    : before creating thread")
-
-    thread_play_tap = threading.Thread(target=playTap, args=(num,tap_num, player2))
+    thread_play_tap = threading.Thread(target=playTap, args=(num,tap_num, vlc_inst))
     thread_record = threading.Thread(target=recordVideo, args=(cap, duration, framerate, num, tap_pause, path, kennung))
     print("Main    : before running thread")
-
-    playIdle(player1)
-
+    playIdle(vlc_inst)
     thread_record.start()
     thread_play_tap.start()
     
     print("Main    : wait for the thread to finish")
     print("Main    : before running thread")
     print("Main    : all done")
-    
 
 # def im_show(img, name, time):
     #  cv2.namedWindow(name)
@@ -112,7 +84,7 @@ def main():
 
 def playIdle(vlc_instance):
     playing = True
-    media = vlc.Media("Static_664_1080.mp4")
+    media = vlc.Media("tap_loop_start0900-1050.mp4")
     vlc_instance.set_media(media)
     vlc_instance.play()
 
@@ -137,13 +109,20 @@ def playIdle(vlc_instance):
 def playTap(num, tap_num, vlc_instance):
     global curr_num, start
     
-    media = vlc.Media("Horse_Tapping_Loop_664_1080.mp4")
+    media = vlc.Media("tap_loop_start0001-0059.mp4")
+    
     vlc_instance.set_media(media)
     vlc_instance.play()
+    time.sleep(0.2)
+    while True:
+        if vlc_instance.is_playing() == 0:
+            break
 
-    media = vlc.Media("Horse_Tapping_Loop_664_1080.mp4")
+    curr_num = 1
+
+    media = vlc.Media("tap_loop_start0060-0088.mp4")
     
-    for i in range(tap_num):
+    for i in range(tap_num-1):
         vlc_instance.set_media(media)
         vlc_instance.play()
 
@@ -152,9 +131,18 @@ def playTap(num, tap_num, vlc_instance):
             if vlc_instance.is_playing() == 0:
                 break
         curr_num = i + 1
-    media = vlc.Media("Static_664_1080.mp4")
+    media = vlc.Media("tap_loop_start0118-0139.mp4")
     vlc_instance.set_media(media)
     vlc_instance.play()
+    time.sleep(0.2)
+    while True:
+        if vlc_instance.is_playing() == 0:
+            break
+
+    media = vlc.Media("tap_loop_start0900-1050.mp4")
+    vlc_instance.set_media(media)
+    vlc_instance.play()
+    
 
 
 def createFilename(infos):
