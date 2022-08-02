@@ -174,7 +174,7 @@ def recordVideo(cap, duration, framerate, num, tap_pause, path, kennung):
 
     # Define the codec and create VideoWriter object
     fourcc = cv2.VideoWriter_fourcc(*'MJPG')
-    out = cv2.VideoWriter(capturestring_no_anno, fourcc, 30.0, (1080,  1920))
+    out = cv2.VideoWriter(capturestring_no_anno, fourcc, 30.0, (1920,  1080))
 
     frameNP = np.zeros(shape=(frames_to_record,1080,1920,3),dtype=np.uint8)
     targetFrame = []
@@ -186,7 +186,7 @@ def recordVideo(cap, duration, framerate, num, tap_pause, path, kennung):
         ret, frame = cap.read()
         #print(frame.shape)
         
-        out.write(np.rot90(frame, 3))
+        out.write(frame)
         if not ret:
             print("Can't receive frame (stream end?). Exiting ...")
             break
