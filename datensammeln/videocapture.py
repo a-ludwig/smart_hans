@@ -131,6 +131,8 @@ def playTap(num, tap_num, vlc_instance):
             if vlc_instance.is_playing() == 0:
                 break
         curr_num = i + 1
+    
+    
     media = vlc.Media("tap_loop_start0118-0139.mp4")
     vlc_instance.set_media(media)
     vlc_instance.play()
@@ -138,6 +140,8 @@ def playTap(num, tap_num, vlc_instance):
     while True:
         if vlc_instance.is_playing() == 0:
             break
+    #set curr_num to stop recording
+    curr_num = -1
 
     media = vlc.Media("tap_loop_start0900-1050.mp4")
     vlc_instance.set_media(media)
@@ -161,8 +165,17 @@ def recordVideo(cap, duration, framerate, num, tap_pause, path, kennung):
     #Define amount of Frames to Record
     frames_to_record = int(duration*framerate)
 
+    #define filename
+    infos = [date_time, num, tap_pause, kennung]
+    filename = createFilename(infos)
+    capturestring_no_anno = (path + filename)
+
+    
+
     # Define the codec and create VideoWriter object
     fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+    out = cv2.VideoWriter(capturestring_no_anno, fourcc, 30.0, (1080,  1920))
+
     frameNP = np.zeros(shape=(frames_to_record,1080,1920,3),dtype=np.uint8)
     targetFrame = []
     
@@ -173,13 +186,10 @@ def recordVideo(cap, duration, framerate, num, tap_pause, path, kennung):
         ret, frame = cap.read()
         #print(frame.shape)
         
-       
+        out.write(np.rot90(frame, 3))
         if not ret:
             print("Can't receive frame (stream end?). Exiting ...")
             break
-        frameNP[i]=frame
-        # cv2.putText(frame, str(i), [300,100], cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 3)
-        # cv2.putText(frame, "current number: " + str(curr_num), [400,100], cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 3)
         #cv2.imshow('frame', frame)
         #cv2.setWindowProperty("frame", cv2.WND_PROP_TOPMOST, 2)
 
@@ -190,25 +200,22 @@ def recordVideo(cap, duration, framerate, num, tap_pause, path, kennung):
             break
         i+=1
        
-        if i >= frames_to_record:
+        if curr_num == -1:
             break
     # Release everything if job is finished
     print(frameNP[0].shape)
     cap.release()
+    out.release()  
     anmerkungen = input("Anmerkungen?: ")
 
     infos = [date_time, num, targetFrame[0] + "-" + targetFrame[-1], tap_pause, kennung, anmerkungen]
-
     filename = createFilename(infos)
     capturestring = (path + filename)
 
 
     print(capturestring)
-    out = cv2.VideoWriter(capturestring, fourcc, 30.0, (1080,  1920))
-
-    for frame in frameNP:
-        out.write(np.rot90(frame))
-    out.release()    
+    os.rename(capturestring_no_anno, capturestring)
+ 
 
 if __name__ == "__main__":
     main()
