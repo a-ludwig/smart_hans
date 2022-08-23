@@ -25,7 +25,7 @@ import datetime as dt
 #plt.style.use('https://raw.githubusercontent.com/TDAmeritrade/stumpy/main/docs/stumpy.mplstyle')
 
 ################
-
+rot_angle = 180
 def get_2d_points(img, rotation_vector, translation_vector, camera_matrix, val):
     """Return the 3D points present as 2D for making annotation box"""
     point_3d = []
@@ -184,10 +184,17 @@ def main (args):
         end_annot = int(file.split("_")[5].split("-")[1])
         cap = cv2.VideoCapture(path+"/"+file)
         ret, img = cap.read()
+        
+        #rotate image
+        size = img.shape
+        center = (size[1]/2, size[0]/2)
+        M = cv2.getRotationMatrix2D(center, rot_angle, scale = 1)
+        img = cv2.warpAffine(img, M, (size[1], size[0]))
+
         size = img.shape
         # Camera internals
-        focal_length = size[1]
         center = (size[1]/2, size[0]/2)
+        focal_length = size[1]
         camera_matrix = np.array(
                                 [[focal_length, 0, center[0]],
                                 [0, focal_length, center[1]],
@@ -195,8 +202,12 @@ def main (args):
                                 )
         while True:
             ret, img = cap.read()
-            fps = cap.get(cv2.CAP_PROP_FPS)
             if ret == True:
+                #rotate image
+                size = img.shape
+                img = cv2.warpAffine(img, M, (size[1], size[0]))
+
+                fps = cap.get(cv2.CAP_PROP_FPS)
                 faces = find_faces(img, face_model)
                 for face in faces:
                     marks = detect_marks(img, landmark_model, face)
@@ -300,9 +311,9 @@ def main (args):
                     
                     break
             else:
-               # print(data)
+                #print(data)
                 df2 = pd.DataFrame(data)
-                df2.to_csv(out+file.split('.')[0]+file.split('.')[1]+".csv")
+                df2.to_csv(out+"/"+file.split('.')[0]+file.split('.')[1]+".csv")
                 break
 
 
