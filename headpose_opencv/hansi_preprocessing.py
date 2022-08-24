@@ -25,7 +25,7 @@ import datetime as dt
 #plt.style.use('https://raw.githubusercontent.com/TDAmeritrade/stumpy/main/docs/stumpy.mplstyle')
 
 ################
-rot_angle = 180
+rot_angle = 270
 def get_2d_points(img, rotation_vector, translation_vector, camera_matrix, val):
     """Return the 3D points present as 2D for making annotation box"""
     point_3d = []
@@ -280,7 +280,7 @@ def main (args):
                 annotate = 0 
                 current_frame = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
                 if current_frame >= start_annot and current_frame <= end_annot :
-                    print(" i will annotate at frame "+ str(current_frame))
+                    #print(" i will annotate at frame "+ str(current_frame))
                     annotate = 1
 
                 data.append( {
