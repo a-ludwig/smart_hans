@@ -1,22 +1,20 @@
 import os
+from turtle import shape
 import numpy as np
 import pandas as pd
+import csv
 
 path = "C:/Users/peter/Nextcloud/smart_hans/AP2/Daten/auf_kopf_export"
 
 window_size = 40
 df_len = 800
 
-col_names =  ['index', 'class']
+col_names =  ['target']
 
 for i in range(window_size):
     col_names.append(i)
 
-  
-# create an empty dataframe
-# with columns
-dataset_df  = pd.DataFrame(columns = col_names)
-
+dataset_np = np.array([col_names])
 file_num = 1
 for file in os.listdir(path):
 
@@ -26,24 +24,23 @@ for file in os.listdir(path):
 
     anno_df_num = int(start_annot/window_size)
     
-    df = pd.read_csv(path +"/"+ file, index_col=0)
-    print(df.head)
-    nosetip_df = df.iloc[:df_len,1]
-    nosetip_df.columns = ['null']
-    print(nosetip_df)
+    file_np = np.genfromtxt(path + '/' + file, skip_header=True, delimiter=',')
+    nosetip_np = file_np[:df_len,2]
+
 
     
     for i in range(int(df_len/window_size)):
-        temp_df = nosetip_df.iloc[i*window_size:(i+1)*window_size]
-        temp_df = temp_df.rename(i * file_num)
 
-        df = pd.DataFrame([[0 if (i < anno_df_num) else 1]], columns=['zeile'])
-        temp_df = pd.concat([df, temp_df])
-        #temp_df = temp_df.rename(col'unbena', inplace = True)
-        dataset_df = pd.concat([dataset_df, temp_df], axis = 0, ignore_index=False)
-    print('df')
-    print(temp_df)
-    print(dataset_df.head)
+        index = int(file_num * i)
+        target = 0 if (i < anno_df_num) else 1 if (i == anno_df_num) else 2
+        arr = np.array([target])
+
+        temp_np = nosetip_np[i*window_size:(i+1)*window_size]
+        temp_np = np.append(arr, temp_np)
+
+        dataset_np = np.vstack([dataset_np, temp_np])
 
     file_num = file_num + 1
-    break
+
+dataset_df  = pd.DataFrame(dataset_np[1:].tolist(), columns=col_names)
+print(dataset_df)
