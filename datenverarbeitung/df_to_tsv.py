@@ -2,7 +2,7 @@
 from scenario1 import get_scenario_1
 
 
-test, train = get_scenario_1(path = "C:/Users/peter/Nextcloud/smart_hans/AP2/Daten/auf_kopf_export")
+train, test = get_scenario_1(path = "C:/Users/peter/Nextcloud/smart_hans/AP2/Daten/gesammelt")
 
 
 print(test)

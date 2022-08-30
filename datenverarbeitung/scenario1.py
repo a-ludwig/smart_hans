@@ -9,8 +9,8 @@ def get_scenario_1(path = "C:/Users/peter/Nextcloud/smart_hans/AP2/Daten/auf_kop
     """
     Scenarion1 limits the TS to a length of 800 frames. Each recording is split in 20 chunks of 40 Frames. 
     There are three classes: 0 = Before target, 1 = target, 2 = after target.
-    The returned df has the shape (n, 41) where the first Column is the target.
-    Resulting
+    The returned df has the shape (n, 41) where the first Column is the target class. 
+    The data has been normalized.
         Paramters: 
                 path (str): location of CSV files
         Returns:
@@ -36,6 +36,7 @@ def get_scenario_1(path = "C:/Users/peter/Nextcloud/smart_hans/AP2/Daten/auf_kop
         
         file_np = np.genfromtxt(path + '/' + file, skip_header=True, delimiter=',')
         nosetip_np = file_np[:df_len,2]
+        # convert numpy to float
 
 
         
@@ -47,13 +48,24 @@ def get_scenario_1(path = "C:/Users/peter/Nextcloud/smart_hans/AP2/Daten/auf_kop
 
             temp_np = nosetip_np[i*window_size:(i+1)*window_size]
             temp_np = np.append(arr, temp_np)
-
-            dataset_np = np.vstack([dataset_np, temp_np])
+            
+            #check length of arr to make sure that files that are too short still can be used
+            if len(temp_np) == 41:
+                dataset_np = np.vstack([dataset_np, temp_np])
 
         file_num = file_num + 1
 
-    dataset_df  = pd.DataFrame(dataset_np[1:].tolist(), columns=col_names)
+    dataset_df  = pd.DataFrame(dataset_np[1:].tolist(), columns=col_names, dtype="float64")
 
-    train = dataset_df.sample(frac=0.8,random_state=0)
-    test = dataset_df.drop(train.index)
+    
+    df_max_scaled = dataset_df.copy()
+    #get max value of all columns
+    max = df_max_scaled.iloc[:, 1:].abs().max().max()
+    # apply normalization techniques
+    for column in df_max_scaled.iloc[:, 1:].columns:
+        df_max_scaled[column] = df_max_scaled[column]  / max
+        
+
+    train = df_max_scaled.sample(frac=0.8,random_state=0)
+    test = df_max_scaled.drop(train.index)
     return train, test
