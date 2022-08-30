@@ -1,9 +1,10 @@
 
 from scenario1 import get_scenario_1
 from scenario2 import get_scenario_2
+from scenario3 import get_scenario_3
 
 
-train, test = get_scenario_2(path = "C:/Users/peter/Nextcloud/smart_hans/AP2/Daten/gesammelt")
+train, test = get_scenario_3(path = "C:/Users/peter/Nextcloud/smart_hans/AP2/Daten/gesammelt")
 
 
 print(test)
