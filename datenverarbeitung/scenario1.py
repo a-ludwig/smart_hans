@@ -36,13 +36,11 @@ def get_scenario_1(path = "C:/Users/peter/Nextcloud/smart_hans/AP2/Daten/auf_kop
         
         file_np = np.genfromtxt(path + '/' + file, skip_header=True, delimiter=',')
         nosetip_np = file_np[:df_len,2]
-        # convert numpy to float
-
-
         
         for i in range(int(df_len/window_size)):
 
             index = int(file_num * i)
+            #create array that only contains target value
             target = 0 if (i < anno_df_num) else 1 if (i == anno_df_num) else 2
             arr = np.array([target])
 
