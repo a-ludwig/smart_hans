@@ -5,8 +5,19 @@ import pandas as pd
 import csv
 
 
-def get_test_train(path = "C:/Users/peter/Nextcloud/smart_hans/AP2/Daten/auf_kopf_export", window_size = 40, df_len = 800):
+def get_szenario_1(path = "C:/Users/peter/Nextcloud/smart_hans/AP2/Daten/auf_kopf_export"):
+    """
+    Szenarion1
+    Diese Funktion gibt ein training und test Datensatz zurück.
+    Dafür wird die TS auf 800 Frames beschränkt und eine Windowsize von 40 gewählt
+        Paramters: 
+                path (str): Ort der CSV-Dateien
+        Returns:
+                train (df), test (df)
+    """
 
+    window_size = 40
+    df_len = 800
     col_names =  ['target']
 
     for i in range(window_size):
@@ -44,4 +55,4 @@ def get_test_train(path = "C:/Users/peter/Nextcloud/smart_hans/AP2/Daten/auf_kop
 
     train = dataset_df.sample(frac=0.8,random_state=0)
     test = dataset_df.drop(train.index)
-    return test, train
+    return train, test

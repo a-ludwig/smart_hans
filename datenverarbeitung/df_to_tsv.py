@@ -1,8 +1,8 @@
 
-from szenario1 import get_test_train
+from szenario1 import get_szenario_1
 
 
-test, train = get_test_train(path = "C:/Users/peter/Nextcloud/smart_hans/AP2/Daten/auf_kopf_export", window_size = 40, df_len = 800)
+test, train = get_szenario_1(path = "C:/Users/peter/Nextcloud/smart_hans/AP2/Daten/auf_kopf_export")
 
 
 print(test)
