@@ -5,13 +5,14 @@ import pandas as pd
 import csv
 
 
-def get_szenario_1(path = "C:/Users/peter/Nextcloud/smart_hans/AP2/Daten/auf_kopf_export"):
+def get_scenario_1(path = "C:/Users/peter/Nextcloud/smart_hans/AP2/Daten/auf_kopf_export"):
     """
-    Szenarion1
-    Diese Funktion gibt ein training und test Datensatz zurück.
-    Dafür wird die TS auf 800 Frames beschränkt und eine Windowsize von 40 gewählt
+    Scenarion1 limits the TS to a length of 800 frames. Each recording is split in 20 chunks of 40 Frames. 
+    There are three classes: 0 = Before target, 1 = target, 2 = after target.
+    The returned df has the shape (n, 41) where the first Column is the target.
+    Resulting
         Paramters: 
-                path (str): Ort der CSV-Dateien
+                path (str): location of CSV files
         Returns:
                 train (df), test (df)
     """
