@@ -2,18 +2,20 @@ import os
 import numpy as np
 import pandas as pd
 
-def get_scenario_3(path):
+def get_scenario_3(path, nr_taps, move_window_by = 0):
     """
     Scenario3 splits one recording in two classes and only two TS.
-    Class 0: the tap before and the target
-    Class 1: the two taps after the target
+    Class 0: nr_taps-1 taps before and the target
+    Class 1: the nr_taps taps after the target
         Paramters: 
                 path (str): location of CSV files
+                nr_taps (int): nr of relevant taps
+                move_window_by (int): moves the tap window by given amount
         Returns:
                 train (df), test (df)
     """
     tap_size = 40
-    window_size = 80
+    window_size = nr_taps * tap_size
     df_len = 800
     col_names =  ['target']
 
@@ -25,10 +27,10 @@ def get_scenario_3(path):
     for file in os.listdir(path):
 
         print(file)
-        start_annot = int(file.split("_")[5].split("-")[0])
+        start_annot = int(file.split("_")[5].split("-")[0]) 
         end_annot = int(file.split("_")[5].split("-")[1])
 
-        anno_df_num = int(start_annot/tap_size)
+        target_tap_nr = int(start_annot/tap_size)
 
         file_np = np.genfromtxt(path + '/' + file, skip_header=True, delimiter=',')
         nosetip_np = file_np[:df_len,2]
@@ -37,24 +39,39 @@ def get_scenario_3(path):
         #Class 0#
         #########
         #create array that only contains target value
-        target_arr = np.array([0])
-        temp_np = nosetip_np[(anno_df_num-1) * tap_size : (anno_df_num+1) * tap_size ]
-        temp_np = np.append(target_arr, temp_np)
+        target_class_arr = np.array([0])
+
+        for i in range(nr_taps):
+            #reverse itterator
+            j = nr_taps - i - 1
+            #define delimeter for class 0
+            start_del = (target_tap_nr - j) * tap_size + move_window_by
+            end_del = (target_tap_nr - j + 1) * tap_size + move_window_by
+            #fill temp arr and append to target_class_array
+            temp_arr = nosetip_np[start_del : end_del]
+            target_class_arr = np.append(target_class_arr, temp_arr)
             
         #check length of arr to make sure that files that are too short still can be used
-        if len(temp_np) == len(col_names):
-            dataset_np = np.vstack([dataset_np, temp_np])
+        if len(target_class_arr) == len(col_names):
+            dataset_np = np.vstack([dataset_np, target_class_arr])
 
         #########
-        #Class 1#
+        #Class 0#
         #########
         #create array that only contains target value
-        target_arr = np.array([1])
-        temp_np = nosetip_np[(anno_df_num+1) * tap_size : (anno_df_num+3) * tap_size ]
-        temp_np = np.append(target_arr, temp_np)
+        target_class_arr = np.array([1])
 
-        if len(temp_np) == len(col_names):
-            dataset_np = np.vstack([dataset_np, temp_np])
+        for i in range(nr_taps):
+            #define delimeter for class 0
+            start_del = (target_tap_nr + i + 1) * tap_size + move_window_by
+            end_del = (target_tap_nr + i + 2) * tap_size  + move_window_by
+            #fill temp arr and append to target_class_array
+            temp_arr = nosetip_np[start_del : end_del]
+            target_class_arr = np.append(target_class_arr, temp_arr)
+            
+        #check length of arr to make sure that files that are too short still can be used
+        if len(target_class_arr) == len(col_names):
+            dataset_np = np.vstack([dataset_np, target_class_arr])
 
 
     dataset_df  = pd.DataFrame(dataset_np[1:].tolist(), columns=col_names, dtype="float64")
