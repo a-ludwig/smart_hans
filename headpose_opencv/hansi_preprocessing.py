@@ -226,6 +226,13 @@ def main (args):
                     
                     # Project a 3D point (0, 0, 1000.0) onto the image plane.
                     # We use this to draw a line sticking out of the nose
+                    rmat, jac = cv2.Rodrigues(rotation_vector)
+                    angles, mtxR, mtxQ, Qx, Qy, Qz = cv2.RQDecomp3x3(rmat)
+                    print('*' * 80)
+                    # print(f"Qx:{Qx}\tQy:{Qy}\tQz:{Qz}\t")
+                    pitch = np.arctan2(Qx[2][1], Qx[2][2])
+                    roll = np.arctan2(-Qy[2][0], np.sqrt((Qy[2][1] * Qy[2][1] ) + (Qy[2][2] * Qy[2][2])))
+                    yaw = np.arctan2(Qz[0][0], Qz[1][0])
                     
                     (nose_end_point2D, jacobian) = cv2.projectPoints(np.array([(0.0, 0.0, 1000.0)]), rotation_vector, translation_vector, camera_matrix, dist_coeffs)
                     
@@ -302,7 +309,10 @@ def main (args):
                     "head_pose1_y": x1[1],
                     "head_pose2_x": x2[0], 
                     "head_pose2_y": x2[1],
-                    "jerk_expected" : annotate
+                    "jerk_expected" : annotate,
+                    "pitch": pitch,
+                    "roll": roll,
+                    "yaw": yaw,
                 } )
             
                 ##############
