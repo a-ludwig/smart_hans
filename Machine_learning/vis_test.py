@@ -1,4 +1,4 @@
-from datenverarbeitung.scenario3 import dataloader
+from datenverarbeitung.dataloader import dataloader
 from vis import vis_data
 
 
