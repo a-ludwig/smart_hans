@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 
 class dataloader:
-    def __init__(self, path, scenario, nr_taps = 1, move_window_by = 0 ):
+    def __init__(self, path, scenario, nr_taps = 1, move_window_by = 0, index_datapoint = 2):
         self.path = path
 
         self.scenario = scenario
@@ -18,7 +18,7 @@ class dataloader:
 
         self.col_names = self.get_col_names(self.window_size)
 
-
+        self.index_datapoint = index_datapoint
 
     def get_train_test(self, frac, seed):
         
@@ -36,7 +36,7 @@ class dataloader:
             target_tap_nr = int(start_annot/self.tap_size)
 
             file_np = np.genfromtxt(self.path + '/' + file, skip_header=True, delimiter=',')
-            nosetip_np = file_np[:df_len,2]
+            nosetip_np = file_np[:df_len,self.index_datapoint]
 
             if self.scenario == 1:
                 dataset_np = self.get_scenario_1(nosetip_np, target_tap_nr, file, dataset_np, file_num)
