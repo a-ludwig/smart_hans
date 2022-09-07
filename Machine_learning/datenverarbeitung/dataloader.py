@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 
 class dataloader:
-    def __init__(self, path, scenario, nr_taps = 1, move_window_by = 0, index_datapoint = 2):
+    def __init__(self, path, scenario, nr_taps = 1, move_window_by = 0, index_datapoint = 2, univariate = True):
         self.path = path
 
         self.scenario = scenario
@@ -16,9 +16,12 @@ class dataloader:
         self.window_size = self.nr_taps * self.tap_size
         self.df_len = 800
 
+        self.index_datapoint = index_datapoint
+        self.univariate = univariate
+
         self.col_names = self.get_col_names(self.window_size)
 
-        self.index_datapoint = index_datapoint
+        
 
     def get_train_test(self, frac, seed):
         
@@ -36,16 +39,20 @@ class dataloader:
             target_tap_nr = int(start_annot/self.tap_size)
 
             file_np = np.genfromtxt(self.path + '/' + file, skip_header=True, delimiter=',')
-            feature_arr = file_np[:df_len,self.index_datapoint]
+            all_np = file_np[:df_len]
+            feature_np = file_np[:df_len,self.index_datapoint]
 
             if self.scenario == 1:
-                dataset_np = self.get_scenario_1(feature_arr, target_tap_nr, file, dataset_np, file_num)
-            
+                if self.univariate == True: 
+                    dataset_np = self.get_scenario_1(feature_np, target_tap_nr, file, dataset_np, file_num)
+                else :
+                    dataset_np = self.get_scenario_1(all_np, target_tap_nr, file, dataset_np, file_num)
+
             if self.scenario == 2:
-                dataset_np = self.get_scenario_2(feature_arr, target_tap_nr, file, dataset_np, file_num)
+                dataset_np = self.get_scenario_2(feature_np, target_tap_nr, file, dataset_np, file_num)
 
             if self.scenario == 3:
-                dataset_np = self.get_scenario_3(feature_arr, target_tap_nr, file, dataset_np)
+                dataset_np = self.get_scenario_3(feature_np, target_tap_nr, file, dataset_np)
         
 
         dataset_df  = pd.DataFrame(dataset_np[1:].tolist(), columns=self.col_names, dtype="float64")
@@ -57,9 +64,9 @@ class dataloader:
         return train, test, df_normalized
 
 
-    def get_scenario_1(self, feature_arr, target_tap_nr, file, dataset_np, file_num):
+    def get_scenario_1(self, feature_np, target_tap_nr, file, dataset_np, file_num):
         """
-        Scenarion1 limits the TS to a length of 800 frames. Each recording is split in 20 chunks of 40 Frames. 
+        Scenario 1 limits the TS to a length of 800 frames. Each recording is split in 20 chunks of 40 Frames. 
         There are three classes: 0 = Before target, 1 = target, 2 = after target.
         The returned df has the shape (n, 41) where the first Column is the target class. 
         The data has been normalized.
@@ -75,8 +82,16 @@ class dataloader:
             target = 0 if (i < target_tap_nr) else 1 if (i == target_tap_nr) else 2
             arr = np.array([target])
 
-            temp_np = feature_arr[i*self.window_size:(i+1)*self.window_size]
-            arr = np.append(arr, temp_np)
+            
+            if self.univariate == True:
+                temp_np = feature_np[i*self.window_size:(i+1)*self.window_size]
+                arr = np.append(arr, temp_np)
+            else:
+                for i in range(feature_np.shape[1]):
+                    arr = np.append(arr, [i+1])
+                    temp_np = feature_np[:self.df_len, i]
+                    arr = np.append(arr, temp_np)
+                    
 
             arr = np.append(arr, [file[:-4]])
             
@@ -85,7 +100,7 @@ class dataloader:
                 dataset_np = np.vstack([dataset_np, arr])
         return dataset_np
 
-    def get_scenario_2(self, feature_arr, target_tap_nr, file, dataset_np, file_num):
+    def get_scenario_2(self, feature_np, target_tap_nr, file, dataset_np, file_num):
         """
         Scenario2 extends scenario1 with an extra class which is the the tap right after the target.
         This new class will replace class 2. Class 2 is now class 3.
@@ -101,7 +116,7 @@ class dataloader:
             target = 0 if (i < target_tap_nr) else 1 if (i == target_tap_nr) else 2 if (i == target_tap_nr + 1) else 3
             arr = np.array([target])
 
-            temp_np = feature_arr[i*self.window_size:(i+1)*self.window_size]
+            temp_np = feature_np[i*self.window_size:(i+1)*self.window_size]
             arr = np.append(arr, temp_np)
 
             arr = np.append(arr, [file[:-4]])
@@ -149,7 +164,10 @@ class dataloader:
         return dataset_np
 
     def get_col_names(self, window_size):
-        col_names =  ['target']
+        if self.univariate == True:
+            col_names =  ['target']
+        else :
+            col_names = ['target', 'feature']
 
         for i in range(window_size):
             col_names.append(i)
