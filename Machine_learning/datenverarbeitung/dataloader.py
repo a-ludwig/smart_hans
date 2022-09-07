@@ -36,16 +36,16 @@ class dataloader:
             target_tap_nr = int(start_annot/self.tap_size)
 
             file_np = np.genfromtxt(self.path + '/' + file, skip_header=True, delimiter=',')
-            nosetip_np = file_np[:df_len,self.index_datapoint]
+            feature_arr = file_np[:df_len,self.index_datapoint]
 
             if self.scenario == 1:
-                dataset_np = self.get_scenario_1(nosetip_np, target_tap_nr, file, dataset_np, file_num)
+                dataset_np = self.get_scenario_1(feature_arr, target_tap_nr, file, dataset_np, file_num)
             
             if self.scenario == 2:
-                dataset_np = self.get_scenario_2(nosetip_np, target_tap_nr, file, dataset_np, file_num)
+                dataset_np = self.get_scenario_2(feature_arr, target_tap_nr, file, dataset_np, file_num)
 
             if self.scenario == 3:
-                dataset_np = self.get_scenario_3(nosetip_np, target_tap_nr, file, dataset_np)
+                dataset_np = self.get_scenario_3(feature_arr, target_tap_nr, file, dataset_np)
         
 
         dataset_df  = pd.DataFrame(dataset_np[1:].tolist(), columns=self.col_names, dtype="float64")
@@ -57,7 +57,7 @@ class dataloader:
         return train, test, df_normalized
 
 
-    def get_scenario_1(self, nosetip_np, target_tap_nr, file, dataset_np, file_num):
+    def get_scenario_1(self, feature_arr, target_tap_nr, file, dataset_np, file_num):
         """
         Scenarion1 limits the TS to a length of 800 frames. Each recording is split in 20 chunks of 40 Frames. 
         There are three classes: 0 = Before target, 1 = target, 2 = after target.
@@ -75,7 +75,7 @@ class dataloader:
             target = 0 if (i < target_tap_nr) else 1 if (i == target_tap_nr) else 2
             arr = np.array([target])
 
-            temp_np = nosetip_np[i*self.window_size:(i+1)*self.window_size]
+            temp_np = feature_arr[i*self.window_size:(i+1)*self.window_size]
             arr = np.append(arr, temp_np)
 
             arr = np.append(arr, [file[:-4]])
@@ -85,7 +85,7 @@ class dataloader:
                 dataset_np = np.vstack([dataset_np, arr])
         return dataset_np
 
-    def get_scenario_2(self, nosetip_np, target_tap_nr, file, dataset_np, file_num):
+    def get_scenario_2(self, feature_arr, target_tap_nr, file, dataset_np, file_num):
         """
         Scenario2 extends scenario1 with an extra class which is the the tap right after the target.
         This new class will replace class 2. Class 2 is now class 3.
@@ -101,7 +101,7 @@ class dataloader:
             target = 0 if (i < target_tap_nr) else 1 if (i == target_tap_nr) else 2 if (i == target_tap_nr + 1) else 3
             arr = np.array([target])
 
-            temp_np = nosetip_np[i*self.window_size:(i+1)*self.window_size]
+            temp_np = feature_arr[i*self.window_size:(i+1)*self.window_size]
             arr = np.append(arr, temp_np)
 
             arr = np.append(arr, [file[:-4]])
