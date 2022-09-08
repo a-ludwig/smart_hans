@@ -5,7 +5,7 @@ import pandas as pd
 
 
 class dataloader:
-    def __init__(self, path, scenario, nr_taps = 1, move_window_by = 0, feature_list = [], univariate = True):
+    def __init__(self, path, scenario, nr_taps = 1, move_window_by = 0, feature_list = []):
         self.path = path
 
         self.feature_list = feature_list
