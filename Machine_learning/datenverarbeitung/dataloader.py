@@ -120,29 +120,25 @@ class dataloader:
             t_arr = np.array([target])
             i_arr = np.array([file_num])
             
-            if self.univariate == True:
-                temp_arr = feature_arr_list[0][i*self.window_size:(i+1)*self.window_size]
-                t_arr = np.append(t_arr, temp_arr)
+            
+            for i, elem in enumerate(feature_arr_list):
+                
+                i_f_arr = np.append(i_arr, [i+1])#setting "feature" value after "index" in one row
+                window_arr = elem[i*self.window_size:(i+1)*self.window_size]
 
-                t_arr = np.append(t_arr, [file[:-4]])#filename without csv
+                if self.univariate:
+                    label_arr = t_arr
+                else:
+                    label_arr = i_f_arr
+                labeled_arr = np.append(label_arr, window_arr)
+                if not self.univariate:
+                    labeled_arr = np.append(labeled_arr, t_arr)
+
+                labeled_arr = np.append(labeled_arr, [file[:-4]])#filename without csv
 
                 #check length of arr to make sure that files that are too short still can be used
-                if len(t_arr) == len(self.col_names):
-                    dataset_np = np.vstack([dataset_np, t_arr])
-
-            else:
-                for i, elem in enumerate(feature_arr_list):
-                    
-                    i_f_arr = np.append(i_arr, [i+1])#setting "feature" value after "index" in one row
-                    temp_np = elem[i*self.window_size:(i+1)*self.window_size]
-                    i_f_arr = np.append(i_f_arr, temp_np)
-                    i_f_t_arr = np.append(i_f_arr, t_arr)
-
-                    i_f_t_name_arr = np.append(i_f_t_arr, [file[:-4]])#filename without csv
-
-                    #check length of arr to make sure that files that are too short still can be used
-                    if len(i_f_t_name_arr) == len(self.col_names):
-                        dataset_np = np.vstack([dataset_np, i_f_t_name_arr])
+                if len(labeled_arr) == len(self.col_names):
+                    dataset_np = np.vstack([dataset_np, labeled_arr])
                     
             
         return dataset_np
