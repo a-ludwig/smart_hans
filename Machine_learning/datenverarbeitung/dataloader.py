@@ -1,10 +1,14 @@
+import enum
 import os
 import numpy as np
 import pandas as pd
 
+
 class dataloader:
-    def __init__(self, path, scenario, nr_taps = 1, move_window_by = 0, index_datapoint = 2, univariate = True):
+    def __init__(self, path, scenario, nr_taps = 1, move_window_by = 0, feature_list = [], univariate = True):
         self.path = path
+
+        self.feature_list = feature_list
 
         self.scenario = scenario
 
@@ -16,10 +20,38 @@ class dataloader:
         self.window_size = self.nr_taps * self.tap_size
         self.df_len = 800
 
-        self.index_datapoint = index_datapoint
-        self.univariate = univariate
+        #self.index_datapoint = index_datapoint
+        self.univariate = False if len(feature_list) > 1 else True
+
+        self.column_dict = {
+            "nosetip_y":           0,
+            "nosetip_x":           1 ,
+            "chin_x":              2 ,
+            "chin_y":              3 ,
+            "left_eye_corner_x":   4 ,
+            "left_eye_corner_y":   5 ,
+            "right_eye_corner_x":  6 ,
+            "right_eye_corner_y":  7 ,
+            "left_mouth_corner_x": 8 ,
+            "left_mouth_corner_y": 9 ,
+            "right_mouth_corner_x":10,
+            "right_mouth_corner_y":11,
+            "nose_end_point_x":    12,
+            "nose_end_point_y":    13,
+            "head_pose1_x":        14,
+            "head_pose1_y":        15,
+            "head_pose2_x":        16,
+            "head_pose2_y":        17,
+            "jerk_expected":       18,
+            "pitch":               19,
+            "roll":                20,
+            "yaw":                 21,
+        }
+
 
         self.col_names = self.get_col_names(self.window_size)
+
+
 
         
 
@@ -38,22 +70,27 @@ class dataloader:
 
             target_tap_nr = int(start_annot/self.tap_size)
 
-            file_np = np.genfromtxt(self.path + '/' + file, skip_header=True, delimiter=',')
-            all_np = file_np[:df_len]
-            feature_np = file_np[:df_len,self.index_datapoint]
+            file_arr = np.genfromtxt(self.path + '/' + file, skip_header=True, delimiter=',')
+            #kürzen des arrays
+            file_arr = file_arr[:df_len]
+            feature_arr_list = []
+
+            for elem in self.feature_list:
+                index = self.column_dict[elem]
+
+                feature_arr_list.append(file_arr[:,index])
 
             if self.scenario == 1:
-                if self.univariate == True: 
-                    dataset_np = self.get_scenario_1(feature_np, target_tap_nr, file, dataset_np, file_num)
-                else :
-                    dataset_np = self.get_scenario_1(all_np, target_tap_nr, file, dataset_np, file_num)
+
+                dataset_np = self.get_scenario_1(feature_arr_list, target_tap_nr, file, dataset_np, file_num)
 
             if self.scenario == 2:
-                dataset_np = self.get_scenario_2(feature_np, target_tap_nr, file, dataset_np, file_num)
+                dataset_np = self.get_scenario_2(feature_arr_list, target_tap_nr, file, dataset_np, file_num)
 
             if self.scenario == 3:
-                dataset_np = self.get_scenario_3(feature_np, target_tap_nr, file, dataset_np)
-        
+                dataset_np = self.get_scenario_3(feature_arr_list, target_tap_nr, file, dataset_np)
+
+            file_num = file_num + 1
 
         dataset_df  = pd.DataFrame(dataset_np[1:].tolist(), columns=self.col_names, dtype="float64")
         
@@ -64,7 +101,7 @@ class dataloader:
         return train, test, df_normalized
 
 
-    def get_scenario_1(self, feature_np, target_tap_nr, file, dataset_np, file_num):
+    def get_scenario_1(self, feature_arr_list, target_tap_nr, file, dataset_np, file_num):
         """
         Scenario 1 limits the TS to a length of 800 frames. Each recording is split in 20 chunks of 40 Frames. 
         There are three classes: 0 = Before target, 1 = target, 2 = after target.
@@ -80,24 +117,34 @@ class dataloader:
             index = int(file_num * i)
             #create array that only contains target value
             target = 0 if (i < target_tap_nr) else 1 if (i == target_tap_nr) else 2
-            arr = np.array([target])
-
+            t_arr = np.array([target])
+            i_arr = np.array([file_num])
             
             if self.univariate == True:
-                temp_np = feature_np[i*self.window_size:(i+1)*self.window_size]
-                arr = np.append(arr, temp_np)
-            else:
-                for i in range(feature_np.shape[1]):
-                    arr = np.append(arr, [i+1])
-                    temp_np = feature_np[:self.df_len, i]
-                    arr = np.append(arr, temp_np)
-                    
+                temp_arr = feature_arr_list[0][i*self.window_size:(i+1)*self.window_size]
+                t_arr = np.append(t_arr, temp_arr)
 
-            arr = np.append(arr, [file[:-4]])
+                t_arr = np.append(t_arr, [file[:-4]])#filename without csv
+
+                #check length of arr to make sure that files that are too short still can be used
+                if len(t_arr) == len(self.col_names):
+                    dataset_np = np.vstack([dataset_np, t_arr])
+
+            else:
+                for i, elem in enumerate(feature_arr_list):
+                    
+                    i_f_arr = np.append(i_arr, [i+1])#setting "feature" value after "index" in one row
+                    temp_np = elem[i*self.window_size:(i+1)*self.window_size]
+                    i_f_arr = np.append(i_f_arr, temp_np)
+                    i_f_t_arr = np.append(i_f_arr, t_arr)
+
+                    i_f_t_name_arr = np.append(i_f_t_arr, [file[:-4]])#filename without csv
+
+                    #check length of arr to make sure that files that are too short still can be used
+                    if len(i_f_t_name_arr) == len(self.col_names):
+                        dataset_np = np.vstack([dataset_np, i_f_t_name_arr])
+                    
             
-            #check length of arr to make sure that files that are too short still can be used
-            if len(arr) == len(self.col_names):
-                dataset_np = np.vstack([dataset_np, arr])
         return dataset_np
 
     def get_scenario_2(self, feature_np, target_tap_nr, file, dataset_np, file_num):
@@ -167,20 +214,30 @@ class dataloader:
         if self.univariate == True:
             col_names =  ['target']
         else :
-            col_names = ['target', 'feature']
+            col_names = ['index','feature']
 
         for i in range(window_size):
             col_names.append(i)
+        
+        if self.univariate == False:
+            col_names.append('target')
         col_names.append('file_name')
         return col_names
 
     def normalize_df(self, df):
+        if self.univariate == True:
+            start_del = 1
+            end_del = -1
+        else:
+            start_del = 2
+            end_del = -2
         df_max_scaled = df.copy()
         #get max value of all columns
-        max = df_max_scaled.iloc[:, 1:-1].abs().max().max()
+        max = df_max_scaled.iloc[:, start_del:end_del].abs().max().max()
         # apply normalization techniques
-        for column in df_max_scaled.iloc[:, 1:-1].columns:
+        for column in df_max_scaled.iloc[:, start_del:end_del].columns:
             df_max_scaled[column] = df_max_scaled[column]  / max
+
         return df_max_scaled
 
     def split_train_test(self, df, frac = 0.8, seed = 0):
