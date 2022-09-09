@@ -17,7 +17,7 @@ class dataloader:
 
         self.tap_size = 40
 
-        self.window_size = self.nr_taps * self.tap_size
+        self.window_size = nr_taps * self.tap_size
         self.df_len = 800
 
         self.df_labled = 1
@@ -154,26 +154,36 @@ class dataloader:
                     train (df), test (df), full_labled(df)
         """
         for target in range(2):
-            for i in range(self.nr_taps):
-                #change itterator depending on class
-                if target == 0:
-                    #reverse itterator
-                    j = -(self.nr_taps - i)
-                if target == 1:
-                    j = i
+            for j, elem in enumerate(feature_arr_list):
+                temp_arr = np.array([])
+                for i in range(self.nr_taps):
+                    #change itterator depending on class
+                    if target == 0:
+                        #reverse itterator
+                        j = -(self.nr_taps - i)
+                    if target == 1:
+                        j = i
 
-                #define delimeter 
-                start_del = (target_tap_nr + j + 1) * self.tap_size + self.move_window_by
-                end_del = (target_tap_nr + j + 2) * self.tap_size + self.move_window_by
+                    #define delimeter 
+                    start_del = (target_tap_nr + j + 1) * self.tap_size + self.move_window_by
+                    end_del = (target_tap_nr + j + 2) * self.tap_size + self.move_window_by
 
-                for i, elem in enumerate(feature_arr_list):
+            
                     #fill temp arr and append to target_class_array
                     window_arr = elem[start_del : end_del]
 
-                    labeled_window = self.get_labeled_window(target, file_num, i , window_arr, file)
+                    labeled_window = self.get_labeled_window(target, file_num, j , window_arr, file)
+                    if i == 0:
+                        temp_arr = np.append(temp_arr, labeled_window)
+                    else:
+                        temp_arr = np.append(temp_arr, window_arr)
 
-                    dataset_np = self.stack_dataset(dataset_np, labeled_window)
 
+                labeled_window = np.append(temp_arr, [file[:-4]])#filename without csv
+
+
+                dataset_np = self.stack_dataset(dataset_np, labeled_window)
+                
         return dataset_np
 
     def get_col_names(self, window_size):
@@ -224,7 +234,7 @@ class dataloader:
         if not self.univariate:
             labeled_arr = np.append(labeled_arr, t_arr)
 
-        labeled_arr = np.append(labeled_arr, [file[:-4]])#filename without csv
+        
 
         return labeled_arr
 
