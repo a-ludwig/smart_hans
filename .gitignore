@@ -1048,3 +1048,7 @@ headpose_opencv/preprocessed/270/smart_hans_08022022_211852_10_341-371_08_mky_.c
 headpose_opencv/preprocessed/270/smart_hans_08022022_211938_13_430-461_08_mky_.csv
 headpose_opencv/preprocessed/270/smart_hans_08022022_212132_3_119-149_08_mky_.csv
 headpose_opencv/preprocessed/270/smart_hans_08022022_212218_9_306-336_08_mky_.csv
+.vscode/launch.json
+Machine_learning/models/scenario_1_stage0.pth
+Machine_learning/models/scenario_1_stage1.pth
+Machine_learning/models/scenario3_stage0.pth
