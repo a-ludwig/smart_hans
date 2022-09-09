@@ -20,6 +20,8 @@ class dataloader:
         self.window_size = self.nr_taps * self.tap_size
         self.df_len = 800
 
+        self.df_labled = 1
+
         #self.index_datapoint = index_datapoint
         self.univariate = False if len(feature_list) > 1 else True
 
@@ -93,9 +95,11 @@ class dataloader:
         
         df_normalized = self.normalize_df(dataset_df)
 
+        self.df_labled = df_normalized
+
         train, test = self.split_train_test(df = df_normalized.iloc[:, :-1], frac = frac, seed = seed)
 
-        return train, test, df_normalized
+        return train, test
 
 
     def get_scenario_1_2(self, feature_arr_list, target_tap_nr, file, dataset_np, file_num):
