@@ -114,36 +114,20 @@ class dataloader:
         """
         for i in range(int(self.df_len/self.window_size)):
 
-            index = int(file_num * i)
             #create array that only contains target value
-            target = 0 if (i < target_tap_nr) else 1 if (i == target_tap_nr) else 2
-            t_arr = np.array([target])
-            i_arr = np.array([file_num])
-            
+            target = 0 if (i < target_tap_nr) else 1 if (i == target_tap_nr) else 2            
             
             for i, elem in enumerate(feature_arr_list):
-                
-                i_f_arr = np.append(i_arr, [i+1])#setting "feature" value after "index" in one row
+
                 window_arr = elem[i*self.window_size:(i+1)*self.window_size]
 
-                if self.univariate:
-                    label_arr = t_arr
-                else:
-                    label_arr = i_f_arr
-                labeled_arr = np.append(label_arr, window_arr)
-                if not self.univariate:
-                    labeled_arr = np.append(labeled_arr, t_arr)
+                labeled_window = self.get_labeled_window(target, file_num, i, window_arr, file)
 
-                labeled_arr = np.append(labeled_arr, [file[:-4]])#filename without csv
+                dataset_np = self.stack_dataset(dataset_np, labeled_window)
 
-                #check length of arr to make sure that files that are too short still can be used
-                if len(labeled_arr) == len(self.col_names):
-                    dataset_np = np.vstack([dataset_np, labeled_arr])
-                    
-            
         return dataset_np
 
-    def get_scenario_2(self, feature_np, target_tap_nr, file, dataset_np, file_num):
+    def get_scenario_2(self, feature_arr_list, target_tap_nr, file, dataset_np, file_num):
         """
         Scenario2 extends scenario1 with an extra class which is the the tap right after the target.
         This new class will replace class 2. Class 2 is now class 3.
@@ -154,19 +138,16 @@ class dataloader:
         """
         for i in range(int(self.df_len/self.window_size)):
 
-            index = int(file_num * i)
             #create array that only contains target value
             target = 0 if (i < target_tap_nr) else 1 if (i == target_tap_nr) else 2 if (i == target_tap_nr + 1) else 3
-            arr = np.array([target])
-
-            temp_np = feature_np[i*self.window_size:(i+1)*self.window_size]
-            arr = np.append(arr, temp_np)
-
-            arr = np.append(arr, [file[:-4]])
             
-            #check length of arr to make sure that files that are too short still can be used
-            if len(arr) == len(self.col_names):
-                dataset_np = np.vstack([dataset_np, arr])
+            for i, elem in enumerate(feature_arr_list):
+
+                window_arr = elem[i*self.window_size:(i+1)*self.window_size]
+
+                labeled_window = self.get_labeled_window(target, file_num, i, window_arr, file)
+
+                dataset_np = self.stack_dataset(dataset_np, labeled_window)
         return dataset_np
 
     def get_scenario_3(self, arr, target_tap_nr, file, dataset_np ):
@@ -232,7 +213,7 @@ class dataloader:
         max = df_max_scaled.iloc[:, start_del:end_del].abs().max().max()
         # apply normalization techniques
         for column in df_max_scaled.iloc[:, start_del:end_del].columns:
-            df_max_scaled[column] = df_max_scaled[column]  / max
+            df_max_scaled[column] = df_max_scaled[column].abs()  / max
 
         return df_max_scaled
 
@@ -240,3 +221,26 @@ class dataloader:
         train = df.sample(frac=frac,random_state=seed)
         test = df.drop(train.index)
         return train, test
+
+    def get_labeled_window(self, target, file_num, feature, window_arr, file):
+        t_arr = np.array([target])
+        i_arr = np.array([file_num])
+        i_f_arr = np.append(i_arr, feature+1)#index then feature(starting with 1)
+
+        if self.univariate:
+            label_arr = t_arr
+        else:
+            label_arr = i_f_arr
+        labeled_arr = np.append(label_arr, window_arr)
+        if not self.univariate:
+            labeled_arr = np.append(labeled_arr, t_arr)
+
+        labeled_arr = np.append(labeled_arr, [file[:-4]])#filename without csv
+
+        return labeled_arr
+
+    def stack_dataset(self, dataset_np, labeled_window):
+        #check length of arr to make sure that files that are too short still can be used
+        if len(labeled_window) == len(self.col_names):
+            dataset_np = np.vstack([dataset_np, labeled_window])
+        return dataset_np
