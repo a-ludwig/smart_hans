@@ -85,7 +85,7 @@ class dataloader:
                 dataset_np = self.get_scenario_1_2(feature_arr_list, target_tap_nr, file, dataset_np, file_num)
 
             if self.scenario == 3:
-                dataset_np = self.get_scenario_3(feature_arr_list, target_tap_nr, file, dataset_np)
+                dataset_np = self.get_scenario_3(feature_arr_list, target_tap_nr, file, dataset_np, file_num)
 
             file_num = file_num + 1
 
@@ -137,7 +137,7 @@ class dataloader:
 
         return dataset_np
 
-    def get_scenario_3(self, arr, target_tap_nr, file, dataset_np ):
+    def get_scenario_3(self, feature_arr_list, target_tap_nr, file, dataset_np, file_num ):
         """
         Scenario3 splits one recording in two classes and only two TS.
         Class 0: nr_taps-1 taps before and the target
@@ -149,29 +149,27 @@ class dataloader:
             Returns:
                     train (df), test (df), full_labled(df)
         """
-        for k in range(2):
-            #create array that only contains target value
-            target_class_arr = np.array([k])
-
+        for target in range(2):
             for i in range(self.nr_taps):
                 #change itterator depending on class
-                if k == 0:
+                if target == 0:
                     #reverse itterator
                     j = -(self.nr_taps - i)
-                if k == 1:
+                if target == 1:
                     j = i
 
                 #define delimeter 
                 start_del = (target_tap_nr + j + 1) * self.tap_size + self.move_window_by
                 end_del = (target_tap_nr + j + 2) * self.tap_size + self.move_window_by
-                #fill temp arr and append to target_class_array
-                temp_arr = arr[start_del : end_del]
-                target_class_arr = np.append(target_class_arr, temp_arr)
-            target_class_arr = np.append(target_class_arr, [file[:-4]])
 
-            #check length of arr to make sure that files that are too short still can be used
-            if len(target_class_arr) == len(self.col_names):
-                dataset_np = np.vstack([dataset_np, target_class_arr])
+                for i, elem in enumerate(feature_arr_list):
+                    #fill temp arr and append to target_class_array
+                    window_arr = elem[start_del : end_del]
+
+                    labeled_window = self.get_labeled_window(target, file_num, i , window_arr, file)
+
+                    dataset_np = self.stack_dataset(dataset_np, labeled_window)
+
         return dataset_np
 
     def get_col_names(self, window_size):
