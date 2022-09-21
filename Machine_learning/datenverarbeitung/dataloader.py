@@ -154,7 +154,7 @@ class dataloader:
                     train (df), test (df), full_labled(df)
         """
         for target in range(2):
-            for j, elem in enumerate(feature_arr_list):
+            for k, elem in enumerate(feature_arr_list):
                 temp_arr = np.array([])
                 for i in range(self.nr_taps):
                     #change itterator depending on class
@@ -172,7 +172,7 @@ class dataloader:
                     #fill temp arr and append to target_class_array
                     window_arr = elem[start_del : end_del]
 
-                    labeled_window = self.get_labeled_window(target, file_num, j , window_arr, file)
+                    labeled_window = self.get_labeled_window(target, file_num, k , window_arr, file)
                     if i == 0:
                         temp_arr = np.append(temp_arr, labeled_window)
                     else:
