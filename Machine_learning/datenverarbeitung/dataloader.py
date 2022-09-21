@@ -136,6 +136,7 @@ class dataloader:
                 window_arr = elem[i*self.window_size:(i+1)*self.window_size]
 
                 labeled_window = self.get_labeled_window(target, file_num, i, window_arr, file)
+                labeled_window = np.append(labeled_window, [file[:-4]])#filename without .csv
 
                 dataset_np = self.stack_dataset(dataset_np, labeled_window)
 
