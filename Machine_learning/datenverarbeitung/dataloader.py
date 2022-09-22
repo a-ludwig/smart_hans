@@ -131,11 +131,11 @@ class dataloader:
             if self.scenario == 2:
                 target = 0 if (i < target_tap_nr) else 1 if (i == target_tap_nr) else 2 if (i == target_tap_nr + 1) else 3
 
-            for i, elem in enumerate(feature_arr_list):
+            for j, elem in enumerate(feature_arr_list):
 
                 window_arr = elem[i*self.window_size:(i+1)*self.window_size]
 
-                labeled_window = self.get_labeled_window(target, file_num, i, window_arr, file)
+                labeled_window = self.get_labeled_window(target, file_num, j, window_arr, file)
                 labeled_window = np.append(labeled_window, [file[:-4]])#filename without .csv
 
                 dataset_np = self.stack_dataset(dataset_np, labeled_window)
