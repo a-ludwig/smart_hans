@@ -53,16 +53,23 @@ class visualizer:
 
         self.legend_without_duplicate_labels(ax)
 
-
-            
-
-        if self.show:
-            plt.show()
-        else:
-            plt.savefig(fname= self.path + fname, format = 'PNG', dpi = 'figure')
+        self.show()
         return
+
+    def visualize_raw(self):
+        
+
+        self.show()
+        
 
     def legend_without_duplicate_labels(self, ax): # https://stackoverflow.com/questions/19385639/duplicate-items-in-legend-in-matplotlib/56253636#56253636
         handles, labels = ax.get_legend_handles_labels()
         unique = [(h, l) for i, (h, l) in enumerate(zip(handles, labels)) if l not in labels[:i]]
         ax.legend(*zip(*unique),loc='upper left')
+
+    def show(self, fname):
+        if self.show:
+            plt.show()
+        else:
+            plt.savefig(fname= self.path + fname, format = 'PNG', dpi = 'figure')
+        return
