@@ -135,8 +135,7 @@ class dataloader:
 
                 window_arr = elem[i*self.window_size:(i+1)*self.window_size]
 
-                labeled_window = self.get_labeled_window(target, file_num, j, window_arr, file)
-                labeled_window = np.append(labeled_window, [file[:-4]])#filename without .csv
+                labeled_window = self.get_labeled_window(target, file_num, j, [window_arr], file)
 
                 dataset_np = self.stack_dataset(dataset_np, labeled_window)
 
@@ -157,6 +156,7 @@ class dataloader:
         for target in range(2):
             for k, elem in enumerate(feature_arr_list):
                 temp_arr = np.array([])
+                window_list = []
                 for i in range(self.nr_taps):
                     #change itterator depending on class
                     if target == 0:
@@ -172,17 +172,10 @@ class dataloader:
             
                     #fill temp arr and append to target_class_array
                     window_arr = elem[start_del : end_del]
+                    window_list.append(window_arr)
 
-                    labeled_window = self.get_labeled_window(target, file_num, k , window_arr, file)
-                    if i == 0:
-                        temp_arr = np.append(temp_arr, labeled_window)
-                    else:
-                        temp_arr = np.append(temp_arr, window_arr)
-
-
-                labeled_window = np.append(temp_arr, [file[:-4]])#filename without csv
-
-
+                    
+                labeled_window = self.get_labeled_window(target, file_num, k , window_list, file)
                 dataset_np = self.stack_dataset(dataset_np, labeled_window)
                 
         return dataset_np
@@ -222,19 +215,20 @@ class dataloader:
         test = df.drop(train.index)
         return train, test
 
-    def get_labeled_window(self, target, file_num, feature, window_arr, file):
+    def get_labeled_window(self, target, file_num, feature, window_list, file):
         t_arr = np.array([target])
         i_arr = np.array([file_num])
         i_f_arr = np.append(i_arr, feature+1)#index then feature(starting with 1)
 
         if self.univariate:
-            label_arr = t_arr
+            labeled_arr = t_arr
         else:
-            label_arr = i_f_arr
-        labeled_arr = np.append(label_arr, window_arr)
+            labeled_arr = i_f_arr
+        for window in window_list:
+            labeled_arr = np.append(labeled_arr, window)
         if not self.univariate:
             labeled_arr = np.append(labeled_arr, t_arr)
-
+        labeled_arr = np.append(labeled_arr, [file[:-4]])#filename without csv
         
 
         return labeled_arr
