@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 import random
+import numpy as np
+import os
 
 #from HANS_Repo.Machine_learning.datenverarbeitung.dataloader import dataloader
 
@@ -10,6 +12,7 @@ class visualizer:
         self.dl = dl
         self.show = show
         self.path = path
+        self.colors = ['r', 'g', 'b', 'c']
         if path == None:
             self.show = True
         
@@ -20,7 +23,7 @@ class visualizer:
     def visualize(self, fname):
         df_len = self.df.shape[0]
         num_col = 4
-        colors = ['r', 'g', 'b', 'c']
+        
 
 
         if self.dl.univariate:
@@ -47,7 +50,7 @@ class visualizer:
             temp_df = self.df.iloc[index, 2:-2]
 
             ax.set_title(self.dl.feature_list[feature-1])
-            L = temp_df.plot( ax=ax, color = colors[target], sharex = True, sharey = True, figsize = (10,8), label = f'class {target}')
+            L = temp_df.plot( ax=ax, color = self.colors[target], sharex = True, sharey = True, figsize = (10,8), label = f'class {target}')
             pos = temp_df.size-3
             plt.text(x = float(pos), y = temp_df.iloc[pos].item(), s= timestamp)
 
@@ -56,10 +59,37 @@ class visualizer:
         self.show()
         return
 
-    def visualize_raw(self):
+    def visualize_raw(self, path):
+        df_len = 800
+        y = list(range(0,df_len))
         
+        for file in os.listdir(path):
+            fig = plt.figure(figsize = (10,8))
+            print(file)
+            start_annot = int(file.split("_")[5].split("-")[0]) 
+            end_annot = int(file.split("_")[5].split("-")[1])
+            target_tap_nr = int(start_annot/40)
 
-        self.show()
+            file_arr = np.genfromtxt(path + '/' + file, skip_header=True, delimiter=',')
+            #kürzen des arrays
+            file_arr = file_arr[:df_len]
+            file_arr_0 = file_arr[:start_annot]
+            y_0 = y[:start_annot]
+            file_arr_1 = file_arr[start_annot:end_annot]
+            y_1 = y[start_annot:end_annot]
+            file_arr_2 = file_arr[end_annot:]
+            y_2 = y[end_annot:]
+
+            for i, column in enumerate(self.dl.column_dict):
+                ax = fig.add_subplot(5, 5, i+1)
+                temp_arr = file_arr_0[:,i+1]
+                ax.plot(y_0,temp_arr, color = self.colors[0])
+                ax.plot(y_1,file_arr_1[:,i+1], color = self.colors[1])
+                ax.plot(y_2, file_arr_2[:,i+1], color = self.colors[2])
+                ax.set_title(list(self.dl.column_dict.keys())[list(self.dl.column_dict.values()).index(i+1)])
+            #break
+            fig.suptitle(file)
+            plt.show()
         
 
     def legend_without_duplicate_labels(self, ax): # https://stackoverflow.com/questions/19385639/duplicate-items-in-legend-in-matplotlib/56253636#56253636
