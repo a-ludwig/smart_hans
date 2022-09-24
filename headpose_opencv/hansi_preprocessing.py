@@ -25,7 +25,7 @@ import datetime as dt
 #plt.style.use('https://raw.githubusercontent.com/TDAmeritrade/stumpy/main/docs/stumpy.mplstyle')
 
 ################
-
+rot_angle = 180
 def get_2d_points(img, rotation_vector, translation_vector, camera_matrix, val):
     """Return the 3D points present as 2D for making annotation box"""
     point_3d = []
@@ -184,10 +184,17 @@ def main (args):
         end_annot = int(file.split("_")[5].split("-")[1])
         cap = cv2.VideoCapture(path+"/"+file)
         ret, img = cap.read()
+        
+        #rotate image
+        size = img.shape
+        center = (size[1]/2, size[0]/2)
+        M = cv2.getRotationMatrix2D(center, rot_angle, scale = 1)
+        img = cv2.warpAffine(img, M, (size[1], size[0]))
+
         size = img.shape
         # Camera internals
-        focal_length = size[1]
         center = (size[1]/2, size[0]/2)
+        focal_length = size[1]
         camera_matrix = np.array(
                                 [[focal_length, 0, center[0]],
                                 [0, focal_length, center[1]],
@@ -195,8 +202,12 @@ def main (args):
                                 )
         while True:
             ret, img = cap.read()
-            fps = cap.get(cv2.CAP_PROP_FPS)
             if ret == True:
+                #rotate image
+                size = img.shape
+                img = cv2.warpAffine(img, M, (size[1], size[0]))
+
+                fps = cap.get(cv2.CAP_PROP_FPS)
                 faces = find_faces(img, face_model)
                 for face in faces:
                     marks = detect_marks(img, landmark_model, face)
@@ -215,6 +226,13 @@ def main (args):
                     
                     # Project a 3D point (0, 0, 1000.0) onto the image plane.
                     # We use this to draw a line sticking out of the nose
+                    rmat, jac = cv2.Rodrigues(rotation_vector)
+                    angles, mtxR, mtxQ, Qx, Qy, Qz = cv2.RQDecomp3x3(rmat)
+                    print('*' * 80)
+                    # print(f"Qx:{Qx}\tQy:{Qy}\tQz:{Qz}\t")
+                    pitch = np.arctan2(Qx[2][1], Qx[2][2])
+                    roll = np.arctan2(-Qy[2][0], np.sqrt((Qy[2][1] * Qy[2][1] ) + (Qy[2][2] * Qy[2][2])))
+                    yaw = np.arctan2(Qz[0][0], Qz[1][0])
                     
                     (nose_end_point2D, jacobian) = cv2.projectPoints(np.array([(0.0, 0.0, 1000.0)]), rotation_vector, translation_vector, camera_matrix, dist_coeffs)
                     
@@ -269,7 +287,7 @@ def main (args):
                 annotate = 0 
                 current_frame = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
                 if current_frame >= start_annot and current_frame <= end_annot :
-                    print(" i will annotate at frame "+ str(current_frame))
+                    #print(" i will annotate at frame "+ str(current_frame))
                     annotate = 1
 
                 data.append( {
@@ -291,7 +309,10 @@ def main (args):
                     "head_pose1_y": x1[1],
                     "head_pose2_x": x2[0], 
                     "head_pose2_y": x2[1],
-                    "jerk_expected" : annotate
+                    "jerk_expected" : annotate,
+                    "pitch": pitch,
+                    "roll": roll,
+                    "yaw": yaw,
                 } )
             
                 ##############
@@ -300,9 +321,9 @@ def main (args):
                     
                     break
             else:
-               # print(data)
+                #print(data)
                 df2 = pd.DataFrame(data)
-                df2.to_csv(out+file.split('.')[0]+file.split('.')[1]+".csv")
+                df2.to_csv(out+"/"+file.split('.')[0]+file.split('.')[1]+".csv")
                 break
 
 
