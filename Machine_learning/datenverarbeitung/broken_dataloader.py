@@ -93,7 +93,7 @@ class dataloader:
             if self.scenario == 3:
                 dataset_np = self.get_scenario_3(feature_arr_list, target_tap_nr, file, dataset_np)
 
-            self.file_num = self.file_num + 1
+#            self.file_num = self.file_num + 1
 
         dataset_df  = pd.DataFrame(dataset_np[1:].tolist(), columns=self.col_names, dtype="float64")
         
@@ -193,7 +193,7 @@ class dataloader:
         if self.univariate == True:
             col_names =  ['target']
         else :
-            col_names = ['index','feature']
+            col_names = ['sample_index','feature']
 
         for i in range(window_size):
             col_names.append(i)
