@@ -214,15 +214,21 @@ class dataloader:
         for i in range(len(self.feature_list)):
             i = i+1
             #get max of all rows with same feature
-            df_feature_max_scaled = df.loc[df['feature'] == float(i)]
+            if self.univariate:
+                df_feature_max_scaled = df
+            else:
+                df_feature_max_scaled = df.loc[df['feature'] == float(i)]
 
             #get max value of all columns
             max = df_feature_max_scaled.iloc[:, start_del:end_del].abs().max().max()
             min = df_feature_max_scaled.iloc[:, start_del:end_del].abs().min().min()
             # apply normalization techniques
             for idx, row in df_max_scaled.iterrows():
-                if row['feature'] == float(i):
+                if self.univariate:
                     df_max_scaled.iloc[idx, start_del:end_del] = (df_max_scaled.iloc[idx, start_del:end_del].abs() - min)/ (max-min)
+                else:
+                    if row['feature'] == float(i):
+                        df_max_scaled.iloc[idx, start_del:end_del] = (df_max_scaled.iloc[idx, start_del:end_del].abs() - min)/ (max-min)
 
         return df_max_scaled
 

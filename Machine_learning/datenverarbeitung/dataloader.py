@@ -5,7 +5,7 @@ import pandas as pd
 
 
 class dataloader:
-    def __init__(self, path, scenario, nr_taps = 1, move_window_by = 0, feature_list = [],tap_size = 40, frac = 0.2):
+    def __init__(self, path, scenario, nr_taps = 1, move_window_by = 0, feature_list = [], tap_size = 40, frac = 0.2):
         self.path = path
 
         self.feature_list = feature_list
