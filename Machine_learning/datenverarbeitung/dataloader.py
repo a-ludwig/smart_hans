@@ -5,7 +5,7 @@ import pandas as pd
 
 
 class dataloader:
-    def __init__(self, path, scenario, nr_taps = 1, move_window_by = 0, feature_list = [], frac = 0.2):
+    def __init__(self, path, scenario, nr_taps = 1, move_window_by = 0, feature_list = [],tap_size = 40, frac = 0.2):
         self.path = path
 
         self.feature_list = feature_list
@@ -15,7 +15,7 @@ class dataloader:
         self.nr_taps = nr_taps
         self.move_window_by = move_window_by
 
-        self.tap_size = 40
+        self.tap_size = tap_size
 
         self.file_num = 0
 
@@ -64,7 +64,7 @@ class dataloader:
 
     def get_train_test(self, frac, seed):
         
-        self.tap_size = 40
+        #self.tap_size = 40
         df_len = 800
 
         dataset_np = np.array([self.col_names])
