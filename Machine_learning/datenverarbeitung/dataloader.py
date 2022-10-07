@@ -5,7 +5,7 @@ import pandas as pd
 
 
 class dataloader:
-    def __init__(self, path, scenario, nr_taps = 1, move_window_by = 0, feature_list = []):
+    def __init__(self, path, scenario, nr_taps = 1, move_window_by = 0, feature_list = [],tap_size = 40, frac = 0.2):
         self.path = path
 
         self.feature_list = feature_list
@@ -15,13 +15,20 @@ class dataloader:
         self.nr_taps = nr_taps
         self.move_window_by = move_window_by
 
-        self.tap_size = 40
+        self.tap_size = tap_size
+
+        self.file_num = 0
+
+        self.frac = frac
 
         self.window_size = nr_taps * self.tap_size
         self.df_len = 800
 
         self.df_labled = 1
 
+        self.df = None
+        self.train = None
+        self.test = None
         #self.index_datapoint = index_datapoint
         self.univariate = False if len(feature_list) > 1 else True
 
@@ -50,20 +57,17 @@ class dataloader:
             "yaw":                 22
         }
 
-
         self.col_names = self.get_col_names(self.window_size)
 
+        self.get_train_test(self.frac, seed = 420)
 
-
-        
 
     def get_train_test(self, frac, seed):
         
-        self.tap_size = 40
+        #self.tap_size = 40
         df_len = 800
 
         dataset_np = np.array([self.col_names])
-        file_num = 1
         for file in os.listdir(self.path):
 
             print(file)
@@ -84,12 +88,12 @@ class dataloader:
 
             if self.scenario == 1 or self.scenario == 2:
 
-                dataset_np = self.get_scenario_1_2(feature_arr_list, target_tap_nr, file, dataset_np, file_num)
+                dataset_np = self.get_scenario_1_2(feature_arr_list, target_tap_nr, file, dataset_np)
 
             if self.scenario == 3:
-                dataset_np = self.get_scenario_3(feature_arr_list, target_tap_nr, file, dataset_np, file_num)
+                dataset_np = self.get_scenario_3(feature_arr_list, target_tap_nr, file, dataset_np)
 
-            file_num = file_num + 1
+#            self.file_num = self.file_num + 1
 
         dataset_df  = pd.DataFrame(dataset_np[1:].tolist(), columns=self.col_names, dtype="float64")
         
@@ -97,12 +101,13 @@ class dataloader:
 
         self.df_labled = df_normalized
 
-        train, test = self.split_train_test(df = df_normalized.iloc[:, :-1], frac = frac, seed = seed)
+        self.train, self.test = self.split_train_test(df = df_normalized.iloc[:, :-1], frac = frac, seed = seed)
+        self.df = df_normalized.iloc[:, :-1]
 
-        return train, test
+        return 
 
 
-    def get_scenario_1_2(self, feature_arr_list, target_tap_nr, file, dataset_np, file_num):
+    def get_scenario_1_2(self, feature_arr_list, target_tap_nr, file, dataset_np):
         """
         Scenario 1 limits the TS to a length of 800 frames. Each recording is split in 20 chunks of 40 Frames. 
         There are three classes: 0 = Before target, 1 = target, 2 = after target.
@@ -135,13 +140,14 @@ class dataloader:
 
                 window_arr = elem[i*self.window_size:(i+1)*self.window_size]
 
-                labeled_window = self.get_labeled_window(target, file_num, j, [window_arr], file)
+                labeled_window = self.get_labeled_window(target, self.file_num, j, [window_arr], file)
 
                 dataset_np = self.stack_dataset(dataset_np, labeled_window)
+            self.file_num = self.file_num +1
 
         return dataset_np
 
-    def get_scenario_3(self, feature_arr_list, target_tap_nr, file, dataset_np, file_num ):
+    def get_scenario_3(self, feature_arr_list, target_tap_nr, file, dataset_np ):
         """
         Scenario3 splits one recording in two classes and only two TS.
         Class 0: nr_taps-1 taps before and the target
@@ -164,27 +170,30 @@ class dataloader:
                         j = -(self.nr_taps - i)
                     if target == 1:
                         j = i
-
+                    if k == 0:
+                        new_target = 0 + target + 1 
+                    else:
+                        new_target = pow(10, k) + target+1
+                    
                     #define delimeter 
                     start_del = (target_tap_nr + j + 1) * self.tap_size + self.move_window_by
                     end_del = (target_tap_nr + j + 2) * self.tap_size + self.move_window_by
 
-            
                     #fill temp arr and append to target_class_array
                     window_arr = elem[start_del : end_del]
                     window_list.append(window_arr)
 
                     
-                labeled_window = self.get_labeled_window(target, file_num, k , window_list, file)
+                labeled_window = self.get_labeled_window(new_target, self.file_num, k , window_list, file)
                 dataset_np = self.stack_dataset(dataset_np, labeled_window)
-                
+            self.file_num = self.file_num +1
         return dataset_np
 
     def get_col_names(self, window_size):
         if self.univariate == True:
             col_names =  ['target']
         else :
-            col_names = ['index','feature']
+            col_names = ['sample_index','feature']
 
         for i in range(window_size):
             col_names.append(i)
@@ -202,11 +211,24 @@ class dataloader:
             start_del = 2
             end_del = -2
         df_max_scaled = df.copy()
-        #get max value of all columns
-        max = df_max_scaled.iloc[:, start_del:end_del].abs().max().max()
-        # apply normalization techniques
-        for column in df_max_scaled.iloc[:, start_del:end_del].columns:
-            df_max_scaled[column] = df_max_scaled[column].abs()  / max
+        for i in range(len(self.feature_list)):
+            i = i+1
+            #get max of all rows with same feature
+            if self.univariate:
+                df_feature_max_scaled = df
+            else:
+                df_feature_max_scaled = df.loc[df['feature'] == float(i)]
+
+            #get max value of all columns
+            max = df_feature_max_scaled.iloc[:, start_del:end_del].abs().max().max()
+            min = df_feature_max_scaled.iloc[:, start_del:end_del].abs().min().min()
+            # apply normalization techniques
+            for idx, row in df_max_scaled.iterrows():
+                if self.univariate:
+                    df_max_scaled.iloc[idx, start_del:end_del] = (df_max_scaled.iloc[idx, start_del:end_del].abs() - min)/ (max-min)
+                else:
+                    if row['feature'] == float(i):
+                        df_max_scaled.iloc[idx, start_del:end_del] = (df_max_scaled.iloc[idx, start_del:end_del].abs() - min)/ (max-min)
 
         return df_max_scaled
 
