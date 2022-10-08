@@ -19,7 +19,7 @@ import pandas as pd
 import numpy as np
 import vlc
 
-from tsai.inference import load_learner
+from tsai.all import *
 
 rot_angle = 0
 debug = True
@@ -227,7 +227,7 @@ def wait_for_face(timer, last_t, dist, time_sec):
 def estimate_head_pose():
     global found_face, stop_idle, curr_num
     #load tsai model
-    predictor = load_learner('/Users/adi/Documents/code/smart_hans/Machine_learning/models/scenario_1_LSTM_features_nosetip_y_stage0.pth')
+    predictor = load_learner_all(path='export', dls_fname='dls', model_fname='model', learner_fname='learner')
     face_model = get_face_detector()
     landmark_model = get_landmark_model()
     cap = cv2.VideoCapture(0)
