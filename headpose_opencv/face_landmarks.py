@@ -11,7 +11,7 @@ import tensorflow as tf
 from tensorflow import keras
 
 
-def get_landmark_model(saved_model='models/pose_model'):
+def get_landmark_model(saved_model='headpose_opencv/models/pose_model'):
     """
     Get the facial landmark model. 
     Original repository: https://github.com/yinguobing/cnn-facial-landmark

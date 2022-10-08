@@ -1,4 +1,5 @@
 from glob import glob
+from turtle import right
 import cv2
 import numpy as np
 import math
@@ -140,13 +141,12 @@ def main():
     framerate = 30.0
     time_to_activate = 5
     
-    
-    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+    #cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
     #Set highest possible resolution
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
-    width = cap.get(cv2.CAP_PROP_FRAME_WIDTH )
-    height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT )
+    #cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+    #cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+    #width = cap.get(cv2.CAP_PROP_FRAME_WIDTH )
+    #height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT )
 
     duration = tap_num * (tap_pause+1)
     #############
@@ -163,15 +163,18 @@ def main():
     print("Main    : before creating thread")
     thread_play_tap = threading.Thread(target=playTap, args=(tap_num, vlc_inst))
     #thread_record = threading.Thread(target=recordVideo, args=(cap, duration, framerate, num, tap_pause, path, kennung))
-    thread_estimate_head_pose = threading.Thread(target=estimate_head_pose, args=())
-    thread_check_face = threading.Thread(target= check_face, args=())
-    thread_play_idle = threading.Thread(target=playIdle, args=(vlc_inst, duration))
+    #thread_estimate_head_pose = threading.Thread(target= estimate_head_pose, args=())
+    #thread_check_face = threading.Thread(target= check_face, args=())
+    #thread_play_idle = threading.Thread(target= playIdle, args=(vlc_inst, duration))
     print("Main    : before running thread")
-    thread_estimate_head_pose.start()
-    
-    time.sleep(2)
-    thread_play_idle.start()
-    thread_check_face.start()
+    #thread_estimate_head_pose.start()
+
+    estimate_head_pose()
+
+
+    #time.sleep(2)
+    #thread_play_idle.start()
+    #thread_check_face.start()
     #thread_record.start()
     #thread_play_tap.start()
     
@@ -179,37 +182,40 @@ def main():
     print("Main    : before running thread")
     print("Main    : all done")
 
-def check_face():
+def wait_for_face(timer, last_t,dist, time_sec):
     global found_face, stop_idle
-    time_to_activate = 10
-    timer = 0 # our variable for *absolute* time measurement
-    last_t = 0 # cache var
+    time_to_activate = time_sec
+    thresh = 40
 
-    while (True):         # detection loop
-        now = time.time() # in seconds 
-        dt = now - last_t # diff time
-        last_t = now      # cache
+    # detection loop
+    now = time.time() # in seconds 
+    dt = now - last_t # diff time
+    last_t = now      # cache
 
-        # try to detect person
+    # try to detect person
 
-        if found_face:
-            timer += dt  # sum up
-        else:
-            timer = 0    # reset
+    if dist > thresh:
+        timer += dt  # sum up
+    else:
+        timer = 0    # reset
+        stop_idle = False
 
-        if timer > time_to_activate:
-            print("you've been here for a minute.")
-            stop_idle = True
-            break
+    if timer > time_to_activate:
+        stop_idle = True
+    return timer, last_t
+    
 
 
 def estimate_head_pose():
-    global found_face
+    global found_face, stop_idle
     face_model = get_face_detector()
     landmark_model = get_landmark_model()
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
     ret, img = cap.read()
     size = img.shape
+    center = (size[1]/2, size[0]/2)
+    M = cv2.getRotationMatrix2D(center, rot_angle, scale = 1)
+    img = cv2.warpAffine(img, M, (size[1], size[0]))
     font = cv2.FONT_HERSHEY_SIMPLEX 
     # 3D model points.
     model_points = np.array([
@@ -232,14 +238,18 @@ def estimate_head_pose():
 
     data = []
     stumpM = 30
+    timer = 0 # our variable for *absolute* time measurement
+    last_t = 0 # cache var
 
     while True:
         ret, img = cap.read()
         fps = cap.get(cv2.CAP_PROP_FPS)
         if ret == True:
+            #rot image
+            img = cv2.warpAffine(img, M, (size[1], size[0]))
             faces = find_faces(img, face_model)
             for face in faces:
-                found_face = True
+                #found_face = True
                 marks = detect_marks(img, landmark_model, face)
                 # mark_detector.draw_marks(img, marks, color=(0, 255, 0))
                 image_points = np.array([
@@ -284,7 +294,14 @@ def estimate_head_pose():
                     ang2 = int(math.degrees(math.atan(-1/m)))
                 except:
                     ang2 = 90
-                    
+                
+
+                dist = get_face_dist(image_points)
+                
+                timer, last_t = wait_for_face(timer, last_t, dist, 5)
+
+                color = (0,255,0) if stop_idle else (255,0,0)
+
                     # print('div by zero error')
                 # if ang1 >= 48:
                 #     print('Head down')
@@ -302,10 +319,11 @@ def estimate_head_pose():
                 
                 cv2.putText(img, str(ang1), tuple(p1), font, 2, (128, 255, 255), 3)
                 cv2.putText(img, str(ang2), tuple(x1), font, 2, (255, 255, 128), 3)
-                cv2.putText(img, str(fps), [100,100], font, 2, (255, 0, 0), 3)
+                cv2.putText(img, str(int(timer)), [100,100], font, 2, color, 3)
+                cv2.putText(img, str(dist), [180,100], font, 2, color, 3)
 
             ##############
-            #cv2.imshow('img', img)
+            cv2.imshow('img', img)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
         else:
@@ -313,7 +331,12 @@ def estimate_head_pose():
     cv2.destroyAllWindows()
     cap.release()
 
+def get_face_dist(image_points):
+    chin_y = image_points[1][1]
+    right_mouth_corner_y = image_points[5][1]
 
+    dist = abs(right_mouth_corner_y - chin_y)
+    return dist
 def playIdle(vlc_instance, duration):
     global stop_idle
     media = vlc.Media("tap_loop_start0900-1050.mp4")
