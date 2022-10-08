@@ -363,7 +363,7 @@ def estimate_head_pose():
                     yaw,
                     ])])
 
-                print(dataset_np)
+               # print(dataset_np)
 
             if dataset_np.shape[0] % window_size == 0 :
                 ##
@@ -393,10 +393,11 @@ def estimate_head_pose():
                 df_normalized = dl.normalize_df(dataset_df).iloc[ :, 2:-2]
 
                 X = df_normalized.to_numpy()
+                print(X)
 
-                to_df_and_window(image_points = data ,tap_num = curr_num, window_size = window_size, move_by = move_by)
+               # to_df_and_window(image_points = data ,tap_num = curr_num, window_size = window_size, move_by = move_by)
             ##############
-            cv2.imshow('img', img)
+            #cv2.imshow('img', img)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
         else:
