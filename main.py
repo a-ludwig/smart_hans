@@ -1,4 +1,7 @@
+from cProfile import label
+from curses import window
 from glob import glob
+from lib2to3.pgen2.pgen import DFAState
 from turtle import right
 import cv2
 import numpy as np
@@ -11,14 +14,19 @@ import sys
 
 from headpose_opencv.face_detector import get_face_detector, find_faces
 from headpose_opencv.face_landmarks import get_landmark_model, detect_marks
+from Machine_learning.datenverarbeitung.dataloader import dataloader
 import pandas as pd
 import numpy as np
 import vlc
 
-rot_angle = 270
+rot_angle = 0
 debug = True
 found_face = False
 stop_idle = False
+curr_num = 1
+df = pd.DataFrame()
+
+
 def get_2d_points(img, rotation_vector, translation_vector, camera_matrix, val):
     """Return the 3D points present as 2D for making annotation box"""
     point_3d = []
@@ -207,10 +215,11 @@ def wait_for_face(timer, last_t,dist, time_sec):
 
 
 def estimate_head_pose():
-    global found_face, stop_idle
+    global found_face, stop_idle, curr_num
     face_model = get_face_detector()
     landmark_model = get_landmark_model()
-    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+    cap = cv2.VideoCapture(0)
+    # cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
     ret, img = cap.read()
     size = img.shape
     center = (size[1]/2, size[0]/2)
@@ -240,6 +249,15 @@ def estimate_head_pose():
     stumpM = 30
     timer = 0 # our variable for *absolute* time measurement
     last_t = 0 # cache var
+    nr_taps = 1
+    tap_size = 40
+    window_size = tap_size * nr_taps
+    
+    move_by = 0
+    
+    dl = dataloader(scenario = 3, nr_taps = nr_taps, move_window_by = move_by, feature_list = ['nosetip_y'] )
+    num_params = len(dl.column_dict)-1
+    dataset_np = np.empty((num_params))
 
     while True:
         ret, img = cap.read()
@@ -301,27 +319,75 @@ def estimate_head_pose():
                 timer, last_t = wait_for_face(timer, last_t, dist, 5)
 
                 color = (0,255,0) if stop_idle else (255,0,0)
-
-                    # print('div by zero error')
-                # if ang1 >= 48:
-                #     print('Head down')
-                #     cv2.putText(img, 'Head down', (30, 30), font, 2, (255, 255, 128), 3)
-                # elif ang1 <= -48:
-                #     print('Head up')
-                #     cv2.putText(img, 'Head up', (30, 30), font, 2, (255, 255, 128), 3)
-                
-                # if ang2 >= 48:
-                #     print('Head right')
-                #     cv2.putText(img, 'Head right', (90, 30), font, 2, (255, 255, 128), 3)
-                # elif ang2 <= -48:
-                #     print('Head left')
-                #     cv2.putText(img, 'Head left', (90, 30), font, 2, (255, 255, 128), 3)
                 
                 cv2.putText(img, str(ang1), tuple(p1), font, 2, (128, 255, 255), 3)
                 cv2.putText(img, str(ang2), tuple(x1), font, 2, (255, 255, 128), 3)
                 cv2.putText(img, str(int(timer)), [100,100], font, 2, color, 3)
                 cv2.putText(img, str(dist), [180,100], font, 2, color, 3)
+                rmat, jac = cv2.Rodrigues(rotation_vector)
+                angles, mtxR, mtxQ, Qx, Qy, Qz = cv2.RQDecomp3x3(rmat)
 
+                pitch = np.arctan2(Qx[2][1], Qx[2][2])
+                roll = np.arctan2(-Qy[2][0], np.sqrt((Qy[2][1] * Qy[2][1] ) + (Qy[2][2] * Qy[2][2])))
+                yaw = np.arctan2(Qz[0][0], Qz[1][0])
+
+               # tap.isPlaying:
+                dataset_np = np.vstack ([dataset_np, np.array([
+                    image_points[0][0],
+                    image_points[0][1],
+                    image_points[1][0],
+                    image_points[1][1],
+                    image_points[2][0],
+                    image_points[2][1],
+                    image_points[3][0],
+                    image_points[3][1],
+                    image_points[4][0],
+                    image_points[4][1],
+                    image_points[5][0],
+                    image_points[5][1],
+                    p2[0],
+                    p2[1],
+                    x1[0],
+                    x1[1],
+                    x2[0], 
+                    x2[1],
+                    pitch,
+                    roll,
+                    yaw,
+                    ])])
+
+                print(dataset_np)
+
+            if dataset_np.shape[0] % window_size == 0 :
+                ##
+                delim = -window_size + move_by
+                window_arr = dataset_np[delim:]
+
+                ##np to df normalize and predict
+                #
+
+                feature_arr_list = []
+                
+
+                for elem in dl.feature_list:
+                    index = dl.column_dict[elem]
+                    feature_arr_list.append(window_arr[:,index])
+                
+                dl.univariate = False
+                dl.col_names = dl.get_col_names(dl.window_size)
+                np_for_norm = np.array([dl.col_names])
+
+                for j, elem in enumerate(feature_arr_list):
+                    labeled_window = np.append(np.array([1, j+1]), elem)
+                    labeled_window = np.append(labeled_window, np.array(['target', 'filename']))
+                    np_for_norm = dl.stack_dataset(np_for_norm, labeled_window)
+
+                dataset_df  = pd.DataFrame(np_for_norm[1:].tolist(), columns=dl.col_names, dtype="float64")
+                df_normalized = dl.normalize_df(dataset_df).iloc[ :, 2:-2]
+
+                X = df_normalized.to_numpy()
+
+                to_df_and_window(image_points = data ,tap_num = curr_num, window_size = window_size, move_by = move_by)
             ##############
             cv2.imshow('img', img)
             if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -391,7 +457,6 @@ def playTap(tap_num, vlc_instance):
                 break
         curr_num = i + 1
     
-    
     media = vlc.Media("tap_loop_start0118-0139.mp4")
     vlc_instance.set_media(media)
     vlc_instance.play()
@@ -405,5 +470,25 @@ def playTap(tap_num, vlc_instance):
     media = vlc.Media("tap_loop_start0900-1050.mp4")
     vlc_instance.set_media(media)
     vlc_instance.play()
+def to_df_and_window(image_points,tap_num, window_size, move_by):
+    global df 
+    ##append image_points to continouus data stream
+    image_points 
+    ##data in window füllen -> df nach if erzeugen -> data leeren 
+    if len() >= tap_num * window_size + move_by:
+        window = get_window_from_df(df,tap_num,window_size,move_by)
+
+        print (window)
+    
+def get_window_from_df(df, tap_num, window_size, move_by):
+    ##get window from current df
+    #define delimeter 
+    start_del = tap_num  * window_size + move_by
+    end_del = tap_num * window_size + move_by
+
+    #fill temp arr and append to target_class_array
+    window_arr = df[start_del : end_del]
+    return window_arr
+
 if __name__ == "__main__":
     main()
