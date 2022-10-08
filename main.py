@@ -398,6 +398,8 @@ def estimate_head_pose():
                 df_normalized = dl.normalize_df(dataset_df).iloc[ :, 2:-2]
 
                 X = df_normalized.to_numpy()
+                
+                X = np.array([X])
                 test_probas, test_targets, test_preds = predictor.get_X_preds(X, with_decoded=True)
                 print(test_probas, test_targets, test_preds)
                 print(X)
