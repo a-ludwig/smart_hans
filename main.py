@@ -19,6 +19,8 @@ import pandas as pd
 import numpy as np
 import vlc
 
+from tsai.inference import load_learner
+
 rot_angle = 0
 debug = True
 found_face = False
@@ -177,10 +179,10 @@ def main():
     #thread_play_idle = threading.Thread(target= playIdle, args=(vlc_inst, duration))
     thread_vlc = threading.Thread(target = vlc_thread, args=(vlc_inst, tap_num))
     print("Main    : before running thread")
-    thread_estimate_head_pose.start()
-    thread_vlc.start()
+    #thread_estimate_head_pose.start()
+    #thread_vlc.start()
 
-    #estimate_head_pose()
+    estimate_head_pose()
 
 
     #time.sleep(2)
@@ -224,6 +226,8 @@ def wait_for_face(timer, last_t, dist, time_sec):
 
 def estimate_head_pose():
     global found_face, stop_idle, curr_num
+    #load tsai model
+    predictor = load_learner('/Users/adi/Documents/code/smart_hans/Machine_learning/models/scenario_1_LSTM_features_nosetip_y_stage0.pth')
     face_model = get_face_detector()
     landmark_model = get_landmark_model()
     cap = cv2.VideoCapture(0)
@@ -394,6 +398,8 @@ def estimate_head_pose():
                 df_normalized = dl.normalize_df(dataset_df).iloc[ :, 2:-2]
 
                 X = df_normalized.to_numpy()
+                test_probas, test_targets, test_preds = predictor.get_X_preds(X, with_decoded=True)
+                print(test_probas, test_targets, test_preds)
                 print(X)
 
                # to_df_and_window(image_points = data ,tap_num = curr_num, window_size = window_size, move_by = move_by)
