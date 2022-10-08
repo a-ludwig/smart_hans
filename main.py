@@ -171,17 +171,18 @@ def main():
     print("Main    : before creating thread")
     thread_play_tap = threading.Thread(target=playTap, args=(tap_num, vlc_inst))
     #thread_record = threading.Thread(target=recordVideo, args=(cap, duration, framerate, num, tap_pause, path, kennung))
-    #thread_estimate_head_pose = threading.Thread(target= estimate_head_pose, args=())
+    thread_estimate_head_pose = threading.Thread(target= estimate_head_pose, args=())
     #thread_check_face = threading.Thread(target= check_face, args=())
     #thread_play_idle = threading.Thread(target= playIdle, args=(vlc_inst, duration))
+    thread_vlc = threading.Thread(target = vlc_thread, args=(vlc_inst, tap_num))
     print("Main    : before running thread")
-    #thread_estimate_head_pose.start()
+    thread_estimate_head_pose.start()
+    thread_vlc.start()
 
-    estimate_head_pose()
+    #estimate_head_pose()
 
 
     #time.sleep(2)
-    #thread_play_idle.start()
     #thread_check_face.start()
     #thread_record.start()
     #thread_play_tap.start()
@@ -190,7 +191,13 @@ def main():
     print("Main    : before running thread")
     print("Main    : all done")
 
-def wait_for_face(timer, last_t,dist, time_sec):
+def vlc_thread(vlc_inst, tap_num):
+    playIdle(vlc_inst, tap_num)
+    playTap(tap_num, vlc_inst)
+
+
+
+def wait_for_face(timer, last_t, dist, time_sec):
     global found_face, stop_idle
     time_to_activate = time_sec
     thresh = 40
@@ -403,30 +410,25 @@ def get_face_dist(image_points):
 
     dist = abs(right_mouth_corner_y - chin_y)
     return dist
+
 def playIdle(vlc_instance, duration):
     global stop_idle
-    media = vlc.Media("tap_loop_start0900-1050.mp4")
+    media = vlc.Media("datensammeln/tap_loop_start0900-1050.mp4")
     vlc_instance.set_media(media)
     vlc_instance.play()
     print("start idle")
+    print(stop_idle)
 
     while True:
         if vlc_instance.is_playing() == 0:
             break
-
+    
     while stop_idle == False:
         vlc_instance.set_media(media)
         vlc_instance.play()
 
         time.sleep(0.2)
         while True:
-            ######## have to be root for using keyboard on linux - big nope nope :( #########
-            if keyboard.is_pressed('q'): # if key 'q' is pressed 
-            #if debug: 
-                #print('You Pressed A Key!')
-                stop_idle = True
-
-            
             if vlc_instance.is_playing() == 0:
                 break
 
@@ -434,7 +436,7 @@ def playIdle(vlc_instance, duration):
 def playTap(tap_num, vlc_instance):
     global curr_num, start
     
-    media = vlc.Media("tap_loop_start0001-0059.mp4")
+    media = vlc.Media("datensammeln/tap_loop_start0001-0059.mp4")
     
     vlc_instance.set_media(media)
     vlc_instance.play()
@@ -445,7 +447,7 @@ def playTap(tap_num, vlc_instance):
 
     curr_num = 1
 
-    media = vlc.Media("tap_loop_start0060-0088.mp4")
+    media = vlc.Media("datensammeln/tap_loop_start0060-0088.mp4")
     
     for i in range(tap_num-1):
         vlc_instance.set_media(media)
@@ -457,7 +459,8 @@ def playTap(tap_num, vlc_instance):
                 break
         curr_num = i + 1
     
-    media = vlc.Media("tap_loop_start0118-0139.mp4")
+    
+    media = vlc.Media("datensammeln/tap_loop_start0118-0139.mp4")
     vlc_instance.set_media(media)
     vlc_instance.play()
     time.sleep(0.2)
@@ -467,7 +470,7 @@ def playTap(tap_num, vlc_instance):
     #set curr_num to stop recording
     curr_num = -1
 
-    media = vlc.Media("tap_loop_start0900-1050.mp4")
+    media = vlc.Media("datensammeln/tap_loop_start0900-1050.mp4")
     vlc_instance.set_media(media)
     vlc_instance.play()
 def to_df_and_window(image_points,tap_num, window_size, move_by):
