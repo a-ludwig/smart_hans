@@ -19,6 +19,7 @@ rot_angle = 270
 debug = True
 found_face = False
 stop_idle = False
+stop_tap = False
 def get_2d_points(img, rotation_vector, translation_vector, camera_matrix, val):
     """Return the 3D points present as 2D for making annotation box"""
     point_3d = []
@@ -368,7 +369,7 @@ def playIdle(vlc_instance, duration):
 
 
 def playTap(tap_num, vlc_instance):
-    global curr_num, start
+    global curr_num, stop_tap
     
     media = vlc.Media("datensammeln/tap_loop_start0001-0059.mp4")
     
@@ -392,6 +393,8 @@ def playTap(tap_num, vlc_instance):
             if vlc_instance.is_playing() == 0:
                 break
         curr_num = i + 1
+        if stop_tap:
+            break
     
     
     media = vlc.Media("datensammeln/tap_loop_start0118-0139.mp4")
