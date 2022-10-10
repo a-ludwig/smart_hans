@@ -151,6 +151,7 @@ def main():
     duration = 5
     framerate = 30.0
     time_to_activate = 5
+    dist_thresh = 40
     
     #cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
     #Set highest possible resolution
@@ -182,7 +183,7 @@ def main():
     #thread_estimate_head_pose.start()
     #thread_vlc.start()
 
-    estimate_head_pose()
+    data_thread()
 
 
     #time.sleep(2)
@@ -198,6 +199,132 @@ def vlc_thread(vlc_inst, tap_num):
     playIdle(vlc_inst, tap_num)
     playTap(tap_num, vlc_inst)
 
+def data_thread():
+    global found_face, stop_idle, curr_num
+
+    nr_taps = 1
+    tap_size = 40
+    window_size = tap_size * nr_taps
+    
+    move_by = 0
+
+
+    #load tsai model
+    predictor = load_learner_all(path='export', dls_fname='dls', model_fname='model', learner_fname='learner')
+    #load hp model
+    face_model = get_face_detector()
+    landmark_model = get_landmark_model()
+
+    cap = cv2.VideoCapture(0)
+    # cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+    ret, img = cap.read()
+
+    rot_M, cam_M = get_camera_matrixes(img, rot_angle)
+
+    timer = 0 # our variable for *absolute* time measurement
+    last_t = 0 # cache var
+
+    dl = dataloader(scenario = 3, nr_taps = nr_taps, move_window_by = move_by, feature_list = ['nosetip_y'] )
+    num_params = len(dl.column_dict)-1
+    dataset_np = np.empty((num_params))
+
+    font = cv2.FONT_HERSHEY_SIMPLEX 
+    # 3D model points.
+    model_points = np.array([
+                                (0.0, 0.0, 0.0),             # Nose tip
+                                (0.0, -330.0, -65.0),        # Chin
+                                (-225.0, 170.0, -135.0),     # Left eye left corner
+                                (225.0, 170.0, -135.0),      # Right eye right corne
+                                (-150.0, -150.0, -125.0),    # Left Mouth corner
+                                (150.0, -150.0, -125.0)      # Right mouth corner
+                            ])
+
+    while True:
+        ret, img = cap.read()
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        if ret == True:
+            #rot image
+            img = cv2.warpAffine(img, rot_M, (img.shape[1], img.shape[0]))
+
+            img, image_points, all_points_np = estimate_head_pose(img, model_points, cam_M, face_model, landmark_model)
+
+            dataset_np = np.vstack ([dataset_np, all_points_np])
+
+            test_pred = make_pred(dl, dataset_np, predictor)
+            
+            dist = get_face_dist(image_points)
+
+            timer, last_t = wait_for_face(timer, last_t, dist, 5)
+
+            color = (0,255,0) if stop_idle else (255,0,0)
+
+            cv2.putText(img, str(int(timer)), [100,100], font, 2, color, 3)
+            cv2.putText(img, str(dist), [180,100], font, 2, color, 3)
+
+           # to_df_and_window(image_points = data ,tap_num = curr_num, window_size = window_size, move_by = move_by)
+            ##############
+            #cv2.imshow('img', img)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+        else:
+            break
+    cv2.destroyAllWindows()
+    cap.release()
+
+
+    return
+
+def make_pred(dl, dataset_np, predictor):
+    if dataset_np.shape[0] % dl.window_size == 0 :
+        ##
+        delim = -dl.window_size + dl.move_window_by
+        window_arr = dataset_np[delim:]
+
+        ##np to df normalize and predict
+        #
+
+        feature_arr_list = []
+        
+
+        for elem in dl.feature_list:
+            index = dl.column_dict[elem]
+            feature_arr_list.append(window_arr[:,index])
+        
+        dl.univariate = False
+        dl.col_names = dl.get_col_names(dl.window_size)
+        np_for_norm = np.array([dl.col_names])
+
+        for j, elem in enumerate(feature_arr_list):
+            labeled_window = np.append(np.array([1, j+1]), elem)
+            labeled_window = np.append(labeled_window, np.array(['target', 'filename']))
+            np_for_norm = dl.stack_dataset(np_for_norm, labeled_window)
+
+        dataset_df  = pd.DataFrame(np_for_norm[1:].tolist(), columns=dl.col_names, dtype="float64")
+        df_normalized = dl.normalize_df(dataset_df).iloc[ :, 2:-2]
+
+        X = df_normalized.to_numpy()
+        
+        X = np.array([X])
+        test_probas, test_targets, test_preds = predictor.get_X_preds(X, with_decoded=True)
+        print(test_probas, test_targets, test_preds)
+        print(X)
+        return test_preds
+
+def get_camera_matrixes(img, rot_angle,):
+    size = img.shape
+    center = (size[1]/2, size[0]/2)
+    M = cv2.getRotationMatrix2D(center, rot_angle, scale = 1)
+    img = cv2.warpAffine(img, M, (size[1], size[0]))
+
+    # Camera internals
+    focal_length = size[1]
+    center = (size[1]/2, size[0]/2)
+    camera_matrix = np.array(
+                            [[focal_length, 0, center[0]],
+                            [0, focal_length, center[1]],
+                            [0, 0, 1]], dtype = "double"
+                            )
+    return M, camera_matrix
 
 
 def wait_for_face(timer, last_t, dist, time_sec):
@@ -224,195 +351,97 @@ def wait_for_face(timer, last_t, dist, time_sec):
     
 
 
-def estimate_head_pose():
-    global found_face, stop_idle, curr_num
-    #load tsai model
-    predictor = load_learner_all(path='export', dls_fname='dls', model_fname='model', learner_fname='learner')
-    face_model = get_face_detector()
-    landmark_model = get_landmark_model()
-    cap = cv2.VideoCapture(0)
-    # cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-    ret, img = cap.read()
-    size = img.shape
-    center = (size[1]/2, size[0]/2)
-    M = cv2.getRotationMatrix2D(center, rot_angle, scale = 1)
-    img = cv2.warpAffine(img, M, (size[1], size[0]))
+def estimate_head_pose(img, model_points, camera_matrix, face_model, landmark_model):
     font = cv2.FONT_HERSHEY_SIMPLEX 
-    # 3D model points.
-    model_points = np.array([
-                                (0.0, 0.0, 0.0),             # Nose tip
-                                (0.0, -330.0, -65.0),        # Chin
-                                (-225.0, 170.0, -135.0),     # Left eye left corner
-                                (225.0, 170.0, -135.0),      # Right eye right corne
-                                (-150.0, -150.0, -125.0),    # Left Mouth corner
-                                (150.0, -150.0, -125.0)      # Right mouth corner
-                            ])
+    faces = find_faces(img, face_model)
+    for face in faces:
+        #found_face = True
+        marks = detect_marks(img, landmark_model, face)
+        # mark_detector.draw_marks(img, marks, color=(0, 255, 0))
+        image_points = np.array([
+                                marks[30],     # Nose tip
+                                marks[8],     # Chin
+                                marks[36],     # Left eye left corner
+                                marks[45],     # Right eye right corne
+                                marks[48],     # Left Mouth corner
+                                marks[54]      # Right mouth corner
+                            ], dtype="double")
+        dist_coeffs = np.zeros((4,1)) # Assuming no lens distortion
+        (success, rotation_vector, translation_vector) = cv2.solvePnP(model_points, image_points, camera_matrix, dist_coeffs, flags=cv2.SOLVEPNP_UPNP)
+        
+        
+        # Project a 3D point (0, 0, 1000.0) onto the image plane.
+        # We use this to draw a line sticking out of the nose
+        
+        (nose_end_point2D, jacobian) = cv2.projectPoints(np.array([(0.0, 0.0, 1000.0)]), rotation_vector, translation_vector, camera_matrix, dist_coeffs)
+        
+        for p in image_points:
+            cv2.circle(img, (int(p[0]), int(p[1])), 3, (0,0,255), -1)
+        
+        
+        p1 = ( int(image_points[0][0]), int(image_points[0][1]))
+        p2 = ( int(nose_end_point2D[0][0][0]), int(nose_end_point2D[0][0][1]))
+        x1, x2 = head_pose_points(img, rotation_vector, translation_vector, camera_matrix)
 
-    # Camera internals
-    focal_length = size[1]
-    center = (size[1]/2, size[0]/2)
-    camera_matrix = np.array(
-                            [[focal_length, 0, center[0]],
-                            [0, focal_length, center[1]],
-                            [0, 0, 1]], dtype = "double"
-                            )
+        cv2.line(img, p1, p2, (0, 255, 255), 2)
+        
+        cv2.line(img, tuple(x1), tuple(x2), (255, 255, 0), 2)
+        # for (x, y) in marks:
+        #     cv2.circle(img, (x, y), 4, (255, 255, 0), -1)
+        # cv2.putText(img, str(p1), p1, font, 1, (0, 255, 255), 1)
+        try:
+            m = (p2[1] - p1[1])/(p2[0] - p1[0])
+            ang1 = int(math.degrees(math.atan(m)))
+        except:
+            ang1 = 90
+            
+        try:
+            m = (x2[1] - x1[1])/(x2[0] - x1[0])
+            ang2 = int(math.degrees(math.atan(-1/m)))
+        except:
+            ang2 = 90
+        
 
-    data = []
-    stumpM = 30
-    timer = 0 # our variable for *absolute* time measurement
-    last_t = 0 # cache var
-    nr_taps = 1
-    tap_size = 40
-    window_size = tap_size * nr_taps
-    
-    move_by = 0
-    
-    dl = dataloader(scenario = 3, nr_taps = nr_taps, move_window_by = move_by, feature_list = ['nosetip_y'] )
-    num_params = len(dl.column_dict)-1
-    dataset_np = np.empty((num_params))
+        cv2.putText(img, str(ang1), tuple(p1), font, 2, (128, 255, 255), 3)
+        cv2.putText(img, str(ang2), tuple(x1), font, 2, (255, 255, 128), 3)
 
-    while True:
-        ret, img = cap.read()
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        if ret == True:
-            #rot image
-            img = cv2.warpAffine(img, M, (size[1], size[0]))
-            faces = find_faces(img, face_model)
-            for face in faces:
-                #found_face = True
-                marks = detect_marks(img, landmark_model, face)
-                # mark_detector.draw_marks(img, marks, color=(0, 255, 0))
-                image_points = np.array([
-                                        marks[30],     # Nose tip
-                                        marks[8],     # Chin
-                                        marks[36],     # Left eye left corner
-                                        marks[45],     # Right eye right corne
-                                        marks[48],     # Left Mouth corner
-                                        marks[54]      # Right mouth corner
-                                    ], dtype="double")
-                dist_coeffs = np.zeros((4,1)) # Assuming no lens distortion
-                (success, rotation_vector, translation_vector) = cv2.solvePnP(model_points, image_points, camera_matrix, dist_coeffs, flags=cv2.SOLVEPNP_UPNP)
-                
-                
-                # Project a 3D point (0, 0, 1000.0) onto the image plane.
-                # We use this to draw a line sticking out of the nose
-                
-                (nose_end_point2D, jacobian) = cv2.projectPoints(np.array([(0.0, 0.0, 1000.0)]), rotation_vector, translation_vector, camera_matrix, dist_coeffs)
-                
-                for p in image_points:
-                    cv2.circle(img, (int(p[0]), int(p[1])), 3, (0,0,255), -1)
-                
-                
-                p1 = ( int(image_points[0][0]), int(image_points[0][1]))
-                p2 = ( int(nose_end_point2D[0][0][0]), int(nose_end_point2D[0][0][1]))
-                x1, x2 = head_pose_points(img, rotation_vector, translation_vector, camera_matrix)
+        rmat, jac = cv2.Rodrigues(rotation_vector)
+        angles, mtxR, mtxQ, Qx, Qy, Qz = cv2.RQDecomp3x3(rmat)
 
-                cv2.line(img, p1, p2, (0, 255, 255), 2)
-                
-                cv2.line(img, tuple(x1), tuple(x2), (255, 255, 0), 2)
-                # for (x, y) in marks:
-                #     cv2.circle(img, (x, y), 4, (255, 255, 0), -1)
-                # cv2.putText(img, str(p1), p1, font, 1, (0, 255, 255), 1)
-                try:
-                    m = (p2[1] - p1[1])/(p2[0] - p1[0])
-                    ang1 = int(math.degrees(math.atan(m)))
-                except:
-                    ang1 = 90
-                    
-                try:
-                    m = (x2[1] - x1[1])/(x2[0] - x1[0])
-                    ang2 = int(math.degrees(math.atan(-1/m)))
-                except:
-                    ang2 = 90
-                
+        pitch = np.arctan2(Qx[2][1], Qx[2][2])
+        roll = np.arctan2(-Qy[2][0], np.sqrt((Qy[2][1] * Qy[2][1] ) + (Qy[2][2] * Qy[2][2])))
+        yaw = np.arctan2(Qz[0][0], Qz[1][0])
 
-                dist = get_face_dist(image_points)
-                
-                timer, last_t = wait_for_face(timer, last_t, dist, 5)
+        # tap.isPlaying:
+        all_points_np = np.array([
+            image_points[0][0],
+            image_points[0][1],
+            image_points[1][0],
+            image_points[1][1],
+            image_points[2][0],
+            image_points[2][1],
+            image_points[3][0],
+            image_points[3][1],
+            image_points[4][0],
+            image_points[4][1],
+            image_points[5][0],
+            image_points[5][1],
+            p2[0],
+            p2[1],
+            x1[0],
+            x1[1],
+            x2[0], 
+            x2[1],
+            pitch,
+            roll,
+            yaw,
+            ])
+        
 
-                color = (0,255,0) if stop_idle else (255,0,0)
-                
-                cv2.putText(img, str(ang1), tuple(p1), font, 2, (128, 255, 255), 3)
-                cv2.putText(img, str(ang2), tuple(x1), font, 2, (255, 255, 128), 3)
-                cv2.putText(img, str(int(timer)), [100,100], font, 2, color, 3)
-                cv2.putText(img, str(dist), [180,100], font, 2, color, 3)
-                rmat, jac = cv2.Rodrigues(rotation_vector)
-                angles, mtxR, mtxQ, Qx, Qy, Qz = cv2.RQDecomp3x3(rmat)
+    return img, image_points, all_points_np
 
-                pitch = np.arctan2(Qx[2][1], Qx[2][2])
-                roll = np.arctan2(-Qy[2][0], np.sqrt((Qy[2][1] * Qy[2][1] ) + (Qy[2][2] * Qy[2][2])))
-                yaw = np.arctan2(Qz[0][0], Qz[1][0])
+    # print(dataset_np)
 
-               # tap.isPlaying:
-                dataset_np = np.vstack ([dataset_np, np.array([
-                    image_points[0][0],
-                    image_points[0][1],
-                    image_points[1][0],
-                    image_points[1][1],
-                    image_points[2][0],
-                    image_points[2][1],
-                    image_points[3][0],
-                    image_points[3][1],
-                    image_points[4][0],
-                    image_points[4][1],
-                    image_points[5][0],
-                    image_points[5][1],
-                    p2[0],
-                    p2[1],
-                    x1[0],
-                    x1[1],
-                    x2[0], 
-                    x2[1],
-                    pitch,
-                    roll,
-                    yaw,
-                    ])])
-
-               # print(dataset_np)
-
-            if dataset_np.shape[0] % window_size == 0 :
-                ##
-                delim = -window_size + move_by
-                window_arr = dataset_np[delim:]
-
-                ##np to df normalize and predict
-                #
-
-                feature_arr_list = []
-                
-
-                for elem in dl.feature_list:
-                    index = dl.column_dict[elem]
-                    feature_arr_list.append(window_arr[:,index])
-                
-                dl.univariate = False
-                dl.col_names = dl.get_col_names(dl.window_size)
-                np_for_norm = np.array([dl.col_names])
-
-                for j, elem in enumerate(feature_arr_list):
-                    labeled_window = np.append(np.array([1, j+1]), elem)
-                    labeled_window = np.append(labeled_window, np.array(['target', 'filename']))
-                    np_for_norm = dl.stack_dataset(np_for_norm, labeled_window)
-
-                dataset_df  = pd.DataFrame(np_for_norm[1:].tolist(), columns=dl.col_names, dtype="float64")
-                df_normalized = dl.normalize_df(dataset_df).iloc[ :, 2:-2]
-
-                X = df_normalized.to_numpy()
-                
-                X = np.array([X])
-                test_probas, test_targets, test_preds = predictor.get_X_preds(X, with_decoded=True)
-                print(test_probas, test_targets, test_preds)
-                print(X)
-
-               # to_df_and_window(image_points = data ,tap_num = curr_num, window_size = window_size, move_by = move_by)
-            ##############
-            #cv2.imshow('img', img)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
-        else:
-            break
-    cv2.destroyAllWindows()
-    cap.release()
 
 def get_face_dist(image_points):
     chin_y = image_points[1][1]
