@@ -1,5 +1,5 @@
 from cProfile import label
-from curses import window
+#from curses import window
 from glob import glob
 from lib2to3.pgen2.pgen import DFAState
 from turtle import right
@@ -11,6 +11,10 @@ import time
 import keyboard
 import os
 import sys
+
+import pathlib
+temp = pathlib.PosixPath
+pathlib.PosixPath = pathlib.WindowsPath
 
 from headpose_opencv.face_detector import get_face_detector, find_faces
 from headpose_opencv.face_landmarks import get_landmark_model, detect_marks
@@ -175,7 +179,7 @@ def main():
     print("Main    : before creating thread")
     thread_play_tap = threading.Thread(target=playTap, args=(tap_num, vlc_inst))
     #thread_record = threading.Thread(target=recordVideo, args=(cap, duration, framerate, num, tap_pause, path, kennung))
-    thread_estimate_head_pose = threading.Thread(target= estimate_head_pose, args=())
+    #thread_estimate_head_pose = threading.Thread(target= estimate_head_pose, args=())
     #thread_check_face = threading.Thread(target= check_face, args=())
     #thread_play_idle = threading.Thread(target= playIdle, args=(vlc_inst, duration))
     thread_vlc = threading.Thread(target = vlc_thread, args=(vlc_inst, tap_num))
@@ -246,15 +250,23 @@ def data_thread():
             #rot image
             img = cv2.warpAffine(img, rot_M, (img.shape[1], img.shape[0]))
 
-            img, image_points, all_points_np = estimate_head_pose(img, model_points, cam_M, face_model, landmark_model)
+            faces, face_found = find_face(img, face_model)
 
-            dataset_np = np.vstack ([dataset_np, all_points_np])
+            if face_found:
+                img, image_points, all_points_np = estimate_head_pose(img, model_points, cam_M, face_model, landmark_model, faces)
 
-            test_pred = make_pred(dl, dataset_np, predictor)
+                dataset_np = np.vstack ([dataset_np, all_points_np])
+
+                dist = get_face_dist(image_points)
+
+                timer, last_t = wait_for_face(timer, last_t, dist, 5)
+            else:
+                dist= 666
+
+            if dataset_np.shape[0] % window_size == 0:
+                test_pred = make_pred(dl, dataset_np, predictor)
             
-            dist = get_face_dist(image_points)
-
-            timer, last_t = wait_for_face(timer, last_t, dist, 5)
+            
 
             color = (0,255,0) if stop_idle else (255,0,0)
 
@@ -263,7 +275,7 @@ def data_thread():
 
            # to_df_and_window(image_points = data ,tap_num = curr_num, window_size = window_size, move_by = move_by)
             ##############
-            #cv2.imshow('img', img)
+            cv2.imshow('img', img)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
         else:
@@ -349,96 +361,105 @@ def wait_for_face(timer, last_t, dist, time_sec):
         stop_idle = True
     return timer, last_t
     
-
-
-def estimate_head_pose(img, model_points, camera_matrix, face_model, landmark_model):
-    font = cv2.FONT_HERSHEY_SIMPLEX 
+def find_face(img, face_model):
     faces = find_faces(img, face_model)
-    for face in faces:
-        #found_face = True
-        marks = detect_marks(img, landmark_model, face)
-        # mark_detector.draw_marks(img, marks, color=(0, 255, 0))
-        image_points = np.array([
-                                marks[30],     # Nose tip
-                                marks[8],     # Chin
-                                marks[36],     # Left eye left corner
-                                marks[45],     # Right eye right corne
-                                marks[48],     # Left Mouth corner
-                                marks[54]      # Right mouth corner
-                            ], dtype="double")
-        dist_coeffs = np.zeros((4,1)) # Assuming no lens distortion
-        (success, rotation_vector, translation_vector) = cv2.solvePnP(model_points, image_points, camera_matrix, dist_coeffs, flags=cv2.SOLVEPNP_UPNP)
-        
-        
-        # Project a 3D point (0, 0, 1000.0) onto the image plane.
-        # We use this to draw a line sticking out of the nose
-        
-        (nose_end_point2D, jacobian) = cv2.projectPoints(np.array([(0.0, 0.0, 1000.0)]), rotation_vector, translation_vector, camera_matrix, dist_coeffs)
-        
-        for p in image_points:
-            cv2.circle(img, (int(p[0]), int(p[1])), 3, (0,0,255), -1)
-        
-        
-        p1 = ( int(image_points[0][0]), int(image_points[0][1]))
-        p2 = ( int(nose_end_point2D[0][0][0]), int(nose_end_point2D[0][0][1]))
-        x1, x2 = head_pose_points(img, rotation_vector, translation_vector, camera_matrix)
+    if len(faces) == 0:
+        found = False
+    else:
+        found = True
+    return faces, found
 
-        cv2.line(img, p1, p2, (0, 255, 255), 2)
+def estimate_head_pose(img, model_points, camera_matrix, face_model, landmark_model, faces):
+    font = cv2.FONT_HERSHEY_SIMPLEX 
+    #faces = find_faces(img, face_model)
+    #for face in faces:
+    #found_face = True
+    
+    face = faces[0]
+    marks = detect_marks(img, landmark_model, face)
+    # mark_detector.draw_marks(img, marks, color=(0, 255, 0))
+    image_points = np.array([
+                            marks[30],     # Nose tip
+                            marks[8],     # Chin
+                            marks[36],     # Left eye left corner
+                            marks[45],     # Right eye right corne
+                            marks[48],     # Left Mouth corner
+                            marks[54]      # Right mouth corner
+                        ], dtype="double")
+    dist_coeffs = np.zeros((4,1)) # Assuming no lens distortion
+    (success, rotation_vector, translation_vector) = cv2.solvePnP(model_points, image_points, camera_matrix, dist_coeffs, flags=cv2.SOLVEPNP_UPNP)
+    
+    
+    # Project a 3D point (0, 0, 1000.0) onto the image plane.
+    # We use this to draw a line sticking out of the nose
+    
+    (nose_end_point2D, jacobian) = cv2.projectPoints(np.array([(0.0, 0.0, 1000.0)]), rotation_vector, translation_vector, camera_matrix, dist_coeffs)
+    
+    for p in image_points:
+        cv2.circle(img, (int(p[0]), int(p[1])), 3, (0,0,255), -1)
+    
+    
+    p1 = ( int(image_points[0][0]), int(image_points[0][1]))
+    p2 = ( int(nose_end_point2D[0][0][0]), int(nose_end_point2D[0][0][1]))
+    x1, x2 = head_pose_points(img, rotation_vector, translation_vector, camera_matrix)
+
+    cv2.line(img, p1, p2, (0, 255, 255), 2)
+    
+    cv2.line(img, tuple(x1), tuple(x2), (255, 255, 0), 2)
+    # for (x, y) in marks:
+    #     cv2.circle(img, (x, y), 4, (255, 255, 0), -1)
+    # cv2.putText(img, str(p1), p1, font, 1, (0, 255, 255), 1)
+    try:
+        m = (p2[1] - p1[1])/(p2[0] - p1[0])
+        ang1 = int(math.degrees(math.atan(m)))
+    except:
+        ang1 = 90
         
-        cv2.line(img, tuple(x1), tuple(x2), (255, 255, 0), 2)
-        # for (x, y) in marks:
-        #     cv2.circle(img, (x, y), 4, (255, 255, 0), -1)
-        # cv2.putText(img, str(p1), p1, font, 1, (0, 255, 255), 1)
-        try:
-            m = (p2[1] - p1[1])/(p2[0] - p1[0])
-            ang1 = int(math.degrees(math.atan(m)))
-        except:
-            ang1 = 90
-            
-        try:
-            m = (x2[1] - x1[1])/(x2[0] - x1[0])
-            ang2 = int(math.degrees(math.atan(-1/m)))
-        except:
-            ang2 = 90
-        
+    try:
+        m = (x2[1] - x1[1])/(x2[0] - x1[0])
+        ang2 = int(math.degrees(math.atan(-1/m)))
+    except:
+        ang2 = 90
+    
 
-        cv2.putText(img, str(ang1), tuple(p1), font, 2, (128, 255, 255), 3)
-        cv2.putText(img, str(ang2), tuple(x1), font, 2, (255, 255, 128), 3)
+    cv2.putText(img, str(ang1), tuple(p1), font, 2, (128, 255, 255), 3)
+    cv2.putText(img, str(ang2), tuple(x1), font, 2, (255, 255, 128), 3)
 
-        rmat, jac = cv2.Rodrigues(rotation_vector)
-        angles, mtxR, mtxQ, Qx, Qy, Qz = cv2.RQDecomp3x3(rmat)
+    rmat, jac = cv2.Rodrigues(rotation_vector)
+    angles, mtxR, mtxQ, Qx, Qy, Qz = cv2.RQDecomp3x3(rmat)
 
-        pitch = np.arctan2(Qx[2][1], Qx[2][2])
-        roll = np.arctan2(-Qy[2][0], np.sqrt((Qy[2][1] * Qy[2][1] ) + (Qy[2][2] * Qy[2][2])))
-        yaw = np.arctan2(Qz[0][0], Qz[1][0])
+    pitch = np.arctan2(Qx[2][1], Qx[2][2])
+    roll = np.arctan2(-Qy[2][0], np.sqrt((Qy[2][1] * Qy[2][1] ) + (Qy[2][2] * Qy[2][2])))
+    yaw = np.arctan2(Qz[0][0], Qz[1][0])
 
-        # tap.isPlaying:
-        all_points_np = np.array([
-            image_points[0][0],
-            image_points[0][1],
-            image_points[1][0],
-            image_points[1][1],
-            image_points[2][0],
-            image_points[2][1],
-            image_points[3][0],
-            image_points[3][1],
-            image_points[4][0],
-            image_points[4][1],
-            image_points[5][0],
-            image_points[5][1],
-            p2[0],
-            p2[1],
-            x1[0],
-            x1[1],
-            x2[0], 
-            x2[1],
-            pitch,
-            roll,
-            yaw,
-            ])
-        
+    # tap.isPlaying:
+    all_points_np = np.array([
+        image_points[0][0],
+        image_points[0][1],
+        image_points[1][0],
+        image_points[1][1],
+        image_points[2][0],
+        image_points[2][1],
+        image_points[3][0],
+        image_points[3][1],
+        image_points[4][0],
+        image_points[4][1],
+        image_points[5][0],
+        image_points[5][1],
+        p2[0],
+        p2[1],
+        x1[0],
+        x1[1],
+        x2[0], 
+        x2[1],
+        pitch,
+        roll,
+        yaw,
+        ])
+    
 
     return img, image_points, all_points_np
+    
 
     # print(dataset_np)
 
