@@ -150,74 +150,24 @@ def head_pose_points(img, rotation_vector, translation_vector, camera_matrix):
 
 def main():
     
-    tap_pause = 0.8
-    tap_num = 15
-    duration = 5
-    framerate = 30.0
-    time_to_activate = 5
-    dist_thresh = 40
-    
-    #cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-    #Set highest possible resolution
-    #cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
-    #cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
-    #width = cap.get(cv2.CAP_PROP_FRAME_WIDTH )
-    #height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT )
-
-    duration = tap_num * (tap_pause+1)
-    #############
-    # vlc stuff #
-    #############
-    #create instance
-    vlc_inst = vlc.Instance('--no-video-title-show', '--fullscreen','--video-on-top', '--mouse-hide-timeout=0')
-    #create media_player
-    vlc_inst = vlc.MediaPlayer(vlc_inst)
-    vlc_inst.set_fullscreen(True)
-
-    
-    # multithreading:
-    print("Main    : before creating thread")
-    thread_play_tap = threading.Thread(target=playTap, args=(tap_num, vlc_inst))
-    #thread_record = threading.Thread(target=recordVideo, args=(cap, duration, framerate, num, tap_pause, path, kennung))
-    #thread_estimate_head_pose = threading.Thread(target= estimate_head_pose, args=())
-    #thread_check_face = threading.Thread(target= check_face, args=())
-    #thread_play_idle = threading.Thread(target= playIdle, args=(vlc_inst, duration))
-    thread_vlc = threading.Thread(target = vlc_thread, args=(vlc_inst, tap_num))
-    print("Main    : before running thread")
-    #thread_estimate_head_pose.start()
-    #thread_vlc.start()
-
-    data_thread()
-
-
-    #time.sleep(2)
-    #thread_check_face.start()
-    #thread_record.start()
-    #thread_play_tap.start()
-    
-    print("Main    : wait for the thread to finish")
-    print("Main    : before running thread")
-    print("Main    : all done")
-
-def vlc_thread(vlc_inst, tap_num):
-    playIdle(vlc_inst, tap_num)
-    playTap(tap_num, vlc_inst)
-
-def data_thread():
-    global found_face, stop_idle, curr_num
-
     nr_taps = 1
     tap_size = 40
     window_size = tap_size * nr_taps
-    
     move_by = 0
 
+    stop_idle = False
 
     #load tsai model
     predictor = load_learner_all(path='export', dls_fname='dls', model_fname='model', learner_fname='learner')
     #load hp model
     face_model = get_face_detector()
     landmark_model = get_landmark_model()
+
+    vlc_inst = vlc.Instance('--no-video-title-show', '--fullscreen','--video-on-top', '--mouse-hide-timeout=0')
+    #create media_player
+    vlc_inst = vlc.MediaPlayer(vlc_inst)
+    vlc_inst.set_fullscreen(True)
+
 
     cap = cv2.VideoCapture(0)
     # cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
@@ -242,6 +192,7 @@ def data_thread():
                                 (-150.0, -150.0, -125.0),    # Left Mouth corner
                                 (150.0, -150.0, -125.0)      # Right mouth corner
                             ])
+    dist = 0
 
     while True:
         ret, img = cap.read()
@@ -250,8 +201,13 @@ def data_thread():
             #rot image
             img = cv2.warpAffine(img, rot_M, (img.shape[1], img.shape[0]))
 
-            faces, face_found = find_face(img, face_model)
+            #########
+            #datathread now handling vlc also -> no thread
 
+            handle_vlc(vlc_inst, stop_idle)
+
+            faces, face_found = find_face(img, face_model)
+            
             if face_found:
                 img, image_points, all_points_np = estimate_head_pose(img, model_points, cam_M, face_model, landmark_model, faces)
 
@@ -259,9 +215,10 @@ def data_thread():
 
                 dist = get_face_dist(image_points)
 
-                timer, last_t = wait_for_face(timer, last_t, dist, 5)
-            else:
-                dist= 666
+                timer, last_t, stop_idle = wait_for_face(timer, last_t, dist, 5)
+
+                ## if timer == 5
+            
 
             if dataset_np.shape[0] % window_size == 0:
                 test_pred = make_pred(dl, dataset_np, predictor)
@@ -318,8 +275,8 @@ def make_pred(dl, dataset_np, predictor):
         
         X = np.array([X])
         test_probas, test_targets, test_preds = predictor.get_X_preds(X, with_decoded=True)
-        print(test_probas, test_targets, test_preds)
-        print(X)
+        #print(test_probas, test_targets, test_preds)
+        #print(X)
         return test_preds
 
 def get_camera_matrixes(img, rot_angle,):
@@ -340,7 +297,7 @@ def get_camera_matrixes(img, rot_angle,):
 
 
 def wait_for_face(timer, last_t, dist, time_sec):
-    global found_face, stop_idle
+    #global found_face, stop_idle
     time_to_activate = time_sec
     thresh = 40
 
@@ -353,13 +310,14 @@ def wait_for_face(timer, last_t, dist, time_sec):
 
     if dist > thresh:
         timer += dt  # sum up
+        #print(timer)
     else:
         timer = 0    # reset
         stop_idle = False
 
     if timer > time_to_activate:
         stop_idle = True
-    return timer, last_t
+    return timer, last_t, stop_idle
     
 def find_face(img, face_model):
     faces = find_faces(img, face_model)
@@ -471,26 +429,29 @@ def get_face_dist(image_points):
     dist = abs(right_mouth_corner_y - chin_y)
     return dist
 
-def playIdle(vlc_instance, duration):
-    global stop_idle
-    media = vlc.Media("datensammeln/tap_loop_start0900-1050.mp4")
-    vlc_instance.set_media(media)
-    vlc_instance.play()
-    print("start idle")
-    print(stop_idle)
-
-    while True:
-        if vlc_instance.is_playing() == 0:
-            break
+def handle_vlc(vlc_instance, stop_idle):
+    #global stop_idle
     
-    while stop_idle == False:
-        vlc_instance.set_media(media)
-        vlc_instance.play()
 
-        time.sleep(0.2)
-        while True:
-            if vlc_instance.is_playing() == 0:
-                break
+    
+    if vlc_instance.is_playing() == 0:      
+    
+    
+        if not stop_idle:
+            media = vlc.Media("datensammeln/tap_loop_start0900-1050.mp4")
+            vlc_instance.set_media(media)
+            vlc_instance.play()
+            print("start idle")
+            print(stop_idle)
+            # time.sleep(0.2)
+            # while True:
+            #     if vlc_instance.is_playing() == 0:
+            #         break
+
+        else:
+            if not stop_tap:
+                print("**tapping sounds**")
+
 
 
 def playTap(tap_num, vlc_instance):
