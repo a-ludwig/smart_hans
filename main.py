@@ -1,5 +1,5 @@
 from cProfile import label
-from curses import window
+#from curses import window
 from glob import glob
 from lib2to3.pgen2.pgen import DFAState
 from turtle import right
@@ -11,6 +11,10 @@ import time
 import keyboard
 import os
 import sys
+
+import pathlib
+temp = pathlib.PosixPath
+pathlib.PosixPath = pathlib.WindowsPath
 
 from headpose_opencv.face_detector import get_face_detector, find_faces
 from headpose_opencv.face_landmarks import get_landmark_model, detect_marks
@@ -146,62 +150,154 @@ def head_pose_points(img, rotation_vector, translation_vector, camera_matrix):
 
 def main():
     
-    tap_pause = 0.8
-    tap_num = 15
-    duration = 5
-    framerate = 30.0
-    time_to_activate = 5
-    
-    #cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-    #Set highest possible resolution
-    #cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
-    #cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
-    #width = cap.get(cv2.CAP_PROP_FRAME_WIDTH )
-    #height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT )
+    nr_taps = 1
+    tap_size = 40
+    window_size = tap_size * nr_taps
+    move_by = 0
 
-    duration = tap_num * (tap_pause+1)
-    #############
-    # vlc stuff #
-    #############
-    #create instance
+    stop_idle = False
+
+    #load tsai model
+    predictor = load_learner_all(path='export', dls_fname='dls', model_fname='model', learner_fname='learner')
+    #load hp model
+    face_model = get_face_detector()
+    landmark_model = get_landmark_model()
+
     vlc_inst = vlc.Instance('--no-video-title-show', '--fullscreen','--video-on-top', '--mouse-hide-timeout=0')
     #create media_player
     vlc_inst = vlc.MediaPlayer(vlc_inst)
     vlc_inst.set_fullscreen(True)
 
-    
-    # multithreading:
-    print("Main    : before creating thread")
-    thread_play_tap = threading.Thread(target=playTap, args=(tap_num, vlc_inst))
-    #thread_record = threading.Thread(target=recordVideo, args=(cap, duration, framerate, num, tap_pause, path, kennung))
-    thread_estimate_head_pose = threading.Thread(target= estimate_head_pose, args=())
-    #thread_check_face = threading.Thread(target= check_face, args=())
-    #thread_play_idle = threading.Thread(target= playIdle, args=(vlc_inst, duration))
-    thread_vlc = threading.Thread(target = vlc_thread, args=(vlc_inst, tap_num))
-    print("Main    : before running thread")
-    #thread_estimate_head_pose.start()
-    #thread_vlc.start()
 
-    estimate_head_pose()
+    cap = cv2.VideoCapture(0)
+    # cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+    ret, img = cap.read()
+
+    rot_M, cam_M = get_camera_matrixes(img, rot_angle)
+
+    timer = 0 # our variable for *absolute* time measurement
+    last_t = 0 # cache var
+
+    dl = dataloader(scenario = 3, nr_taps = nr_taps, move_window_by = move_by, feature_list = ['nosetip_y'] )
+    num_params = len(dl.column_dict)-1
+    dataset_np = np.empty((num_params))
+
+    font = cv2.FONT_HERSHEY_SIMPLEX 
+    # 3D model points.
+    model_points = np.array([
+                                (0.0, 0.0, 0.0),             # Nose tip
+                                (0.0, -330.0, -65.0),        # Chin
+                                (-225.0, 170.0, -135.0),     # Left eye left corner
+                                (225.0, 170.0, -135.0),      # Right eye right corne
+                                (-150.0, -150.0, -125.0),    # Left Mouth corner
+                                (150.0, -150.0, -125.0)      # Right mouth corner
+                            ])
+    dist = 0
+
+    while True:
+        ret, img = cap.read()
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        if ret == True:
+            #rot image
+            img = cv2.warpAffine(img, rot_M, (img.shape[1], img.shape[0]))
+
+            #########
+            #datathread now handling vlc also -> no thread
+
+            handle_vlc(vlc_inst, stop_idle)
+
+            faces, face_found = find_face(img, face_model)
+            
+            if face_found:
+                img, image_points, all_points_np = estimate_head_pose(img, model_points, cam_M, face_model, landmark_model, faces)
+
+                dataset_np = np.vstack ([dataset_np, all_points_np])
+
+                dist = get_face_dist(image_points)
+
+                timer, last_t, stop_idle = wait_for_face(timer, last_t, dist, 5)
+
+                ## if timer == 5
+            
+
+            if dataset_np.shape[0] % window_size == 0:
+                test_pred = make_pred(dl, dataset_np, predictor)
+            
+            
+
+            color = (0,255,0) if stop_idle else (255,0,0)
+
+            cv2.putText(img, str(int(timer)), [100,100], font, 2, color, 3)
+            cv2.putText(img, str(dist), [180,100], font, 2, color, 3)
+
+           # to_df_and_window(image_points = data ,tap_num = curr_num, window_size = window_size, move_by = move_by)
+            ##############
+            cv2.imshow('img', img)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+        else:
+            break
+    cv2.destroyAllWindows()
+    cap.release()
 
 
-    #time.sleep(2)
-    #thread_check_face.start()
-    #thread_record.start()
-    #thread_play_tap.start()
-    
-    print("Main    : wait for the thread to finish")
-    print("Main    : before running thread")
-    print("Main    : all done")
+    return
 
-def vlc_thread(vlc_inst, tap_num):
-    playIdle(vlc_inst, tap_num)
-    playTap(tap_num, vlc_inst)
+def make_pred(dl, dataset_np, predictor):
+    if dataset_np.shape[0] % dl.window_size == 0 :
+        ##
+        delim = -dl.window_size + dl.move_window_by
+        window_arr = dataset_np[delim:]
 
+        ##np to df normalize and predict
+        #
+
+        feature_arr_list = []
+        
+
+        for elem in dl.feature_list:
+            index = dl.column_dict[elem]
+            feature_arr_list.append(window_arr[:,index])
+        
+        dl.univariate = False
+        dl.col_names = dl.get_col_names(dl.window_size)
+        np_for_norm = np.array([dl.col_names])
+
+        for j, elem in enumerate(feature_arr_list):
+            labeled_window = np.append(np.array([1, j+1]), elem)
+            labeled_window = np.append(labeled_window, np.array(['target', 'filename']))
+            np_for_norm = dl.stack_dataset(np_for_norm, labeled_window)
+
+        dataset_df  = pd.DataFrame(np_for_norm[1:].tolist(), columns=dl.col_names, dtype="float64")
+        df_normalized = dl.normalize_df(dataset_df).iloc[ :, 2:-2]
+
+        X = df_normalized.to_numpy()
+        
+        X = np.array([X])
+        test_probas, test_targets, test_preds = predictor.get_X_preds(X, with_decoded=True)
+        #print(test_probas, test_targets, test_preds)
+        #print(X)
+        return test_preds
+
+def get_camera_matrixes(img, rot_angle,):
+    size = img.shape
+    center = (size[1]/2, size[0]/2)
+    M = cv2.getRotationMatrix2D(center, rot_angle, scale = 1)
+    img = cv2.warpAffine(img, M, (size[1], size[0]))
+
+    # Camera internals
+    focal_length = size[1]
+    center = (size[1]/2, size[0]/2)
+    camera_matrix = np.array(
+                            [[focal_length, 0, center[0]],
+                            [0, focal_length, center[1]],
+                            [0, 0, 1]], dtype = "double"
+                            )
+    return M, camera_matrix
 
 
 def wait_for_face(timer, last_t, dist, time_sec):
-    global found_face, stop_idle
+    #global found_face, stop_idle
     time_to_activate = time_sec
     thresh = 40
 
@@ -214,205 +310,117 @@ def wait_for_face(timer, last_t, dist, time_sec):
 
     if dist > thresh:
         timer += dt  # sum up
+        #print(timer)
     else:
         timer = 0    # reset
         stop_idle = False
 
     if timer > time_to_activate:
         stop_idle = True
-    return timer, last_t
+    return timer, last_t, stop_idle
     
+def find_face(img, face_model):
+    faces = find_faces(img, face_model)
+    if len(faces) == 0:
+        found = False
+    else:
+        found = True
+    return faces, found
 
-
-def estimate_head_pose():
-    global found_face, stop_idle, curr_num
-    #load tsai model
-    predictor = load_learner_all(path='export', dls_fname='dls', model_fname='model', learner_fname='learner')
-    face_model = get_face_detector()
-    landmark_model = get_landmark_model()
-    cap = cv2.VideoCapture(0)
-    # cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-    ret, img = cap.read()
-    size = img.shape
-    center = (size[1]/2, size[0]/2)
-    M = cv2.getRotationMatrix2D(center, rot_angle, scale = 1)
-    img = cv2.warpAffine(img, M, (size[1], size[0]))
+def estimate_head_pose(img, model_points, camera_matrix, face_model, landmark_model, faces):
     font = cv2.FONT_HERSHEY_SIMPLEX 
-    # 3D model points.
-    model_points = np.array([
-                                (0.0, 0.0, 0.0),             # Nose tip
-                                (0.0, -330.0, -65.0),        # Chin
-                                (-225.0, 170.0, -135.0),     # Left eye left corner
-                                (225.0, 170.0, -135.0),      # Right eye right corne
-                                (-150.0, -150.0, -125.0),    # Left Mouth corner
-                                (150.0, -150.0, -125.0)      # Right mouth corner
-                            ])
-
-    # Camera internals
-    focal_length = size[1]
-    center = (size[1]/2, size[0]/2)
-    camera_matrix = np.array(
-                            [[focal_length, 0, center[0]],
-                            [0, focal_length, center[1]],
-                            [0, 0, 1]], dtype = "double"
-                            )
-
-    data = []
-    stumpM = 30
-    timer = 0 # our variable for *absolute* time measurement
-    last_t = 0 # cache var
-    nr_taps = 1
-    tap_size = 40
-    window_size = tap_size * nr_taps
+    #faces = find_faces(img, face_model)
+    #for face in faces:
+    #found_face = True
     
-    move_by = 0
+    face = faces[0]
+    marks = detect_marks(img, landmark_model, face)
+    # mark_detector.draw_marks(img, marks, color=(0, 255, 0))
+    image_points = np.array([
+                            marks[30],     # Nose tip
+                            marks[8],     # Chin
+                            marks[36],     # Left eye left corner
+                            marks[45],     # Right eye right corne
+                            marks[48],     # Left Mouth corner
+                            marks[54]      # Right mouth corner
+                        ], dtype="double")
+    dist_coeffs = np.zeros((4,1)) # Assuming no lens distortion
+    (success, rotation_vector, translation_vector) = cv2.solvePnP(model_points, image_points, camera_matrix, dist_coeffs, flags=cv2.SOLVEPNP_UPNP)
     
-    dl = dataloader(scenario = 3, nr_taps = nr_taps, move_window_by = move_by, feature_list = ['nosetip_y'] )
-    num_params = len(dl.column_dict)-1
-    dataset_np = np.empty((num_params))
+    
+    # Project a 3D point (0, 0, 1000.0) onto the image plane.
+    # We use this to draw a line sticking out of the nose
+    
+    (nose_end_point2D, jacobian) = cv2.projectPoints(np.array([(0.0, 0.0, 1000.0)]), rotation_vector, translation_vector, camera_matrix, dist_coeffs)
+    
+    for p in image_points:
+        cv2.circle(img, (int(p[0]), int(p[1])), 3, (0,0,255), -1)
+    
+    
+    p1 = ( int(image_points[0][0]), int(image_points[0][1]))
+    p2 = ( int(nose_end_point2D[0][0][0]), int(nose_end_point2D[0][0][1]))
+    x1, x2 = head_pose_points(img, rotation_vector, translation_vector, camera_matrix)
 
-    while True:
-        ret, img = cap.read()
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        if ret == True:
-            #rot image
-            img = cv2.warpAffine(img, M, (size[1], size[0]))
-            faces = find_faces(img, face_model)
-            for face in faces:
-                #found_face = True
-                marks = detect_marks(img, landmark_model, face)
-                # mark_detector.draw_marks(img, marks, color=(0, 255, 0))
-                image_points = np.array([
-                                        marks[30],     # Nose tip
-                                        marks[8],     # Chin
-                                        marks[36],     # Left eye left corner
-                                        marks[45],     # Right eye right corne
-                                        marks[48],     # Left Mouth corner
-                                        marks[54]      # Right mouth corner
-                                    ], dtype="double")
-                dist_coeffs = np.zeros((4,1)) # Assuming no lens distortion
-                (success, rotation_vector, translation_vector) = cv2.solvePnP(model_points, image_points, camera_matrix, dist_coeffs, flags=cv2.SOLVEPNP_UPNP)
-                
-                
-                # Project a 3D point (0, 0, 1000.0) onto the image plane.
-                # We use this to draw a line sticking out of the nose
-                
-                (nose_end_point2D, jacobian) = cv2.projectPoints(np.array([(0.0, 0.0, 1000.0)]), rotation_vector, translation_vector, camera_matrix, dist_coeffs)
-                
-                for p in image_points:
-                    cv2.circle(img, (int(p[0]), int(p[1])), 3, (0,0,255), -1)
-                
-                
-                p1 = ( int(image_points[0][0]), int(image_points[0][1]))
-                p2 = ( int(nose_end_point2D[0][0][0]), int(nose_end_point2D[0][0][1]))
-                x1, x2 = head_pose_points(img, rotation_vector, translation_vector, camera_matrix)
+    cv2.line(img, p1, p2, (0, 255, 255), 2)
+    
+    cv2.line(img, tuple(x1), tuple(x2), (255, 255, 0), 2)
+    # for (x, y) in marks:
+    #     cv2.circle(img, (x, y), 4, (255, 255, 0), -1)
+    # cv2.putText(img, str(p1), p1, font, 1, (0, 255, 255), 1)
+    try:
+        m = (p2[1] - p1[1])/(p2[0] - p1[0])
+        ang1 = int(math.degrees(math.atan(m)))
+    except:
+        ang1 = 90
+        
+    try:
+        m = (x2[1] - x1[1])/(x2[0] - x1[0])
+        ang2 = int(math.degrees(math.atan(-1/m)))
+    except:
+        ang2 = 90
+    
 
-                cv2.line(img, p1, p2, (0, 255, 255), 2)
-                
-                cv2.line(img, tuple(x1), tuple(x2), (255, 255, 0), 2)
-                # for (x, y) in marks:
-                #     cv2.circle(img, (x, y), 4, (255, 255, 0), -1)
-                # cv2.putText(img, str(p1), p1, font, 1, (0, 255, 255), 1)
-                try:
-                    m = (p2[1] - p1[1])/(p2[0] - p1[0])
-                    ang1 = int(math.degrees(math.atan(m)))
-                except:
-                    ang1 = 90
-                    
-                try:
-                    m = (x2[1] - x1[1])/(x2[0] - x1[0])
-                    ang2 = int(math.degrees(math.atan(-1/m)))
-                except:
-                    ang2 = 90
-                
+    cv2.putText(img, str(ang1), tuple(p1), font, 2, (128, 255, 255), 3)
+    cv2.putText(img, str(ang2), tuple(x1), font, 2, (255, 255, 128), 3)
 
-                dist = get_face_dist(image_points)
-                
-                timer, last_t = wait_for_face(timer, last_t, dist, 5)
+    rmat, jac = cv2.Rodrigues(rotation_vector)
+    angles, mtxR, mtxQ, Qx, Qy, Qz = cv2.RQDecomp3x3(rmat)
 
-                color = (0,255,0) if stop_idle else (255,0,0)
-                
-                cv2.putText(img, str(ang1), tuple(p1), font, 2, (128, 255, 255), 3)
-                cv2.putText(img, str(ang2), tuple(x1), font, 2, (255, 255, 128), 3)
-                cv2.putText(img, str(int(timer)), [100,100], font, 2, color, 3)
-                cv2.putText(img, str(dist), [180,100], font, 2, color, 3)
-                rmat, jac = cv2.Rodrigues(rotation_vector)
-                angles, mtxR, mtxQ, Qx, Qy, Qz = cv2.RQDecomp3x3(rmat)
+    pitch = np.arctan2(Qx[2][1], Qx[2][2])
+    roll = np.arctan2(-Qy[2][0], np.sqrt((Qy[2][1] * Qy[2][1] ) + (Qy[2][2] * Qy[2][2])))
+    yaw = np.arctan2(Qz[0][0], Qz[1][0])
 
-                pitch = np.arctan2(Qx[2][1], Qx[2][2])
-                roll = np.arctan2(-Qy[2][0], np.sqrt((Qy[2][1] * Qy[2][1] ) + (Qy[2][2] * Qy[2][2])))
-                yaw = np.arctan2(Qz[0][0], Qz[1][0])
+    # tap.isPlaying:
+    all_points_np = np.array([
+        image_points[0][0],
+        image_points[0][1],
+        image_points[1][0],
+        image_points[1][1],
+        image_points[2][0],
+        image_points[2][1],
+        image_points[3][0],
+        image_points[3][1],
+        image_points[4][0],
+        image_points[4][1],
+        image_points[5][0],
+        image_points[5][1],
+        p2[0],
+        p2[1],
+        x1[0],
+        x1[1],
+        x2[0], 
+        x2[1],
+        pitch,
+        roll,
+        yaw,
+        ])
+    
 
-               # tap.isPlaying:
-                dataset_np = np.vstack ([dataset_np, np.array([
-                    image_points[0][0],
-                    image_points[0][1],
-                    image_points[1][0],
-                    image_points[1][1],
-                    image_points[2][0],
-                    image_points[2][1],
-                    image_points[3][0],
-                    image_points[3][1],
-                    image_points[4][0],
-                    image_points[4][1],
-                    image_points[5][0],
-                    image_points[5][1],
-                    p2[0],
-                    p2[1],
-                    x1[0],
-                    x1[1],
-                    x2[0], 
-                    x2[1],
-                    pitch,
-                    roll,
-                    yaw,
-                    ])])
+    return img, image_points, all_points_np
+    
 
-               # print(dataset_np)
+    # print(dataset_np)
 
-            if dataset_np.shape[0] % window_size == 0 :
-                ##
-                delim = -window_size + move_by
-                window_arr = dataset_np[delim:]
-
-                ##np to df normalize and predict
-                #
-
-                feature_arr_list = []
-                
-
-                for elem in dl.feature_list:
-                    index = dl.column_dict[elem]
-                    feature_arr_list.append(window_arr[:,index])
-                
-                dl.univariate = False
-                dl.col_names = dl.get_col_names(dl.window_size)
-                np_for_norm = np.array([dl.col_names])
-
-                for j, elem in enumerate(feature_arr_list):
-                    labeled_window = np.append(np.array([1, j+1]), elem)
-                    labeled_window = np.append(labeled_window, np.array(['target', 'filename']))
-                    np_for_norm = dl.stack_dataset(np_for_norm, labeled_window)
-
-                dataset_df  = pd.DataFrame(np_for_norm[1:].tolist(), columns=dl.col_names, dtype="float64")
-                df_normalized = dl.normalize_df(dataset_df).iloc[ :, 2:-2]
-
-                X = df_normalized.to_numpy()
-                
-                X = np.array([X])
-                test_probas, test_targets, test_preds = predictor.get_X_preds(X, with_decoded=True)
-                print(test_probas, test_targets, test_preds)
-                print(X)
-
-               # to_df_and_window(image_points = data ,tap_num = curr_num, window_size = window_size, move_by = move_by)
-            ##############
-            #cv2.imshow('img', img)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
-        else:
-            break
-    cv2.destroyAllWindows()
-    cap.release()
 
 def get_face_dist(image_points):
     chin_y = image_points[1][1]
@@ -421,26 +429,29 @@ def get_face_dist(image_points):
     dist = abs(right_mouth_corner_y - chin_y)
     return dist
 
-def playIdle(vlc_instance, duration):
-    global stop_idle
-    media = vlc.Media("datensammeln/tap_loop_start0900-1050.mp4")
-    vlc_instance.set_media(media)
-    vlc_instance.play()
-    print("start idle")
-    print(stop_idle)
-
-    while True:
-        if vlc_instance.is_playing() == 0:
-            break
+def handle_vlc(vlc_instance, stop_idle):
+    #global stop_idle
     
-    while stop_idle == False:
-        vlc_instance.set_media(media)
-        vlc_instance.play()
 
-        time.sleep(0.2)
-        while True:
-            if vlc_instance.is_playing() == 0:
-                break
+    
+    if vlc_instance.is_playing() == 0:      
+    
+    
+        if not stop_idle:
+            media = vlc.Media("datensammeln/tap_loop_start0900-1050.mp4")
+            vlc_instance.set_media(media)
+            vlc_instance.play()
+            print("start idle")
+            print(stop_idle)
+            # time.sleep(0.2)
+            # while True:
+            #     if vlc_instance.is_playing() == 0:
+            #         break
+
+        else:
+            if not stop_tap:
+                print("**tapping sounds**")
+
 
 
 def playTap(tap_num, vlc_instance):
