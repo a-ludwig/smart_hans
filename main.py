@@ -19,13 +19,14 @@ pathlib.PosixPath = pathlib.WindowsPath
 from headpose_opencv.face_detector import get_face_detector, find_faces
 from headpose_opencv.face_landmarks import get_landmark_model, detect_marks
 from Machine_learning.datenverarbeitung.dataloader import dataloader
+from utils.player import media_player
 import pandas as pd
 import numpy as np
 import vlc
 
 from tsai.all import *
 
-rot_angle = 0
+rot_angle = 270
 debug = True
 found_face = False
 stop_idle = False
@@ -155,22 +156,18 @@ def main():
     window_size = tap_size * nr_taps
     move_by = 0
 
-    stop_idle = False
-
     #load tsai model
     predictor = load_learner_all(path='export', dls_fname='dls', model_fname='model', learner_fname='learner')
     #load hp model
     face_model = get_face_detector()
     landmark_model = get_landmark_model()
 
-    vlc_inst = vlc.Instance('--no-video-title-show', '--fullscreen','--video-on-top', '--mouse-hide-timeout=0')
-    #create media_player
-    vlc_inst = vlc.MediaPlayer(vlc_inst)
-    vlc_inst.set_fullscreen(True)
+    player = media_player()
 
+    
 
-    cap = cv2.VideoCapture(0)
-    # cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+    #cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
     ret, img = cap.read()
 
     rot_M, cam_M = get_camera_matrixes(img, rot_angle)
@@ -180,7 +177,8 @@ def main():
 
     dl = dataloader(scenario = 3, nr_taps = nr_taps, move_window_by = move_by, feature_list = ['nosetip_y'] )
     num_params = len(dl.column_dict)-1
-    dataset_np = np.empty((num_params))
+    
+    dataset_np = init_params(num_params)
 
     font = cv2.FONT_HERSHEY_SIMPLEX 
     # 3D model points.
@@ -200,35 +198,47 @@ def main():
         if ret == True:
             #rot image
             img = cv2.warpAffine(img, rot_M, (img.shape[1], img.shape[0]))
+            #dist = 0
 
             #########
             #datathread now handling vlc also -> no thread
 
-            handle_vlc(vlc_inst, stop_idle)
+            player.queue()
 
             faces, face_found = find_face(img, face_model)
             
             if face_found:
                 img, image_points, all_points_np = estimate_head_pose(img, model_points, cam_M, face_model, landmark_model, faces)
 
-                dataset_np = np.vstack ([dataset_np, all_points_np])
-
                 dist = get_face_dist(image_points)
 
-                timer, last_t, stop_idle = wait_for_face(timer, last_t, dist, 5)
-
-                ## if timer == 5
+                if player.switch == "tapping":
+                    dataset_np = np.vstack ([dataset_np, all_points_np])
+            else:
+                player.switch = "idle"
+                dist = 0
             
+
+            timer, last_t = wait_for_face(timer, last_t, dist)
+
+            if timer > 5 and player.switch == "idle":
+                player.switch = "start_tap"
+            elif timer < 5 and player.switch == "tapping": 
+                player.switch = "end_tap"
 
             if dataset_np.shape[0] % window_size == 0:
                 test_pred = make_pred(dl, dataset_np, predictor)
             
-            
-
             color = (0,255,0) if stop_idle else (255,0,0)
 
             cv2.putText(img, str(int(timer)), [100,100], font, 2, color, 3)
             cv2.putText(img, str(dist), [180,100], font, 2, color, 3)
+
+            #### reset for new participant
+            if player.switch == "end_tap":
+                dataset_np = np.empty((num_params))
+                #### dave dataset if you want
+
 
            # to_df_and_window(image_points = data ,tap_num = curr_num, window_size = window_size, move_by = move_by)
             ##############
@@ -242,6 +252,11 @@ def main():
 
 
     return
+
+
+def init_params(num_params):
+    dataset_np = np.empty((num_params))
+    return dataset_np
 
 def make_pred(dl, dataset_np, predictor):
     if dataset_np.shape[0] % dl.window_size == 0 :
@@ -296,9 +311,8 @@ def get_camera_matrixes(img, rot_angle,):
     return M, camera_matrix
 
 
-def wait_for_face(timer, last_t, dist, time_sec):
+def wait_for_face(timer, last_t, dist):
     #global found_face, stop_idle
-    time_to_activate = time_sec
     thresh = 40
 
     # detection loop
@@ -313,11 +327,7 @@ def wait_for_face(timer, last_t, dist, time_sec):
         #print(timer)
     else:
         timer = 0    # reset
-        stop_idle = False
-
-    if timer > time_to_activate:
-        stop_idle = True
-    return timer, last_t, stop_idle
+    return timer, last_t
     
 def find_face(img, face_model):
     faces = find_faces(img, face_model)
@@ -430,12 +440,8 @@ def get_face_dist(image_points):
     return dist
 
 def handle_vlc(vlc_instance, stop_idle):
-    #global stop_idle
-    
 
-    
     if vlc_instance.is_playing() == 0:      
-    
     
         if not stop_idle:
             media = vlc.Media("datensammeln/tap_loop_start0900-1050.mp4")
@@ -443,10 +449,6 @@ def handle_vlc(vlc_instance, stop_idle):
             vlc_instance.play()
             print("start idle")
             print(stop_idle)
-            # time.sleep(0.2)
-            # while True:
-            #     if vlc_instance.is_playing() == 0:
-            #         break
 
         else:
             if not stop_tap:
