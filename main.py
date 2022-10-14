@@ -216,7 +216,7 @@ def main():
 
                 dist = get_face_dist(image_points)
 
-                if player.switch == "tapping":
+                if player.switch == "tapping" and player.curr_tap > 1:
                     dataset_np = np.vstack ([dataset_np, all_points_np])
             else:
                 player.switch = "idle"
@@ -230,7 +230,7 @@ def main():
             elif timer_in_sec < 5 and player.switch == "tapping": 
                 player.switch = "end_tap"
 
-            if dataset_np.shape[0] % window_size == 0:
+            if dataset_np.shape[0] % dl.window_size == 0:
                 predicted_class = make_pred(dl, dataset_np, predictor, threshold=0)
             
             color = (0,255,0) if stop_idle else (255,0,0)
@@ -269,53 +269,52 @@ def make_pred(dl, dataset_np, predictor, threshold):
         Returns None (default) if no class with probability above threshold is received.'''
     class_predicted = None
     
-    if dataset_np.shape[0] % dl.window_size == 0 :
-        ##
-        delim = -dl.window_size + dl.move_window_by
-        window_arr = dataset_np[delim:]
+    ##
+    delim = -dl.window_size + dl.move_window_by
+    window_arr = dataset_np[delim:]
 
-        ##np to df normalize and predict
-        #
+    ##np to df normalize and predict
+    #
 
-        feature_arr_list = []
-        
+    feature_arr_list = []
+    
 
-        for elem in dl.feature_list:
-            index = dl.column_dict[elem]
-            feature_arr_list.append(window_arr[:,index])
-        
-        dl.univariate = False
-        dl.col_names = dl.get_col_names(dl.window_size)
-        np_for_norm = np.array([dl.col_names])
+    for elem in dl.feature_list:
+        index = dl.column_dict[elem]
+        feature_arr_list.append(window_arr[:,index])
+    
+    dl.univariate = False
+    dl.col_names = dl.get_col_names(dl.window_size)
+    np_for_norm = np.array([dl.col_names])
 
-        for j, elem in enumerate(feature_arr_list):
-            labeled_window = np.append(np.array([1, j+1]), elem)
-            labeled_window = np.append(labeled_window, np.array(['target', 'filename']))
-            np_for_norm = dl.stack_dataset(np_for_norm, labeled_window)
+    for j, elem in enumerate(feature_arr_list):
+        labeled_window = np.append(np.array([1, j+1]), elem)
+        labeled_window = np.append(labeled_window, np.array(['target', 'filename']))
+        np_for_norm = dl.stack_dataset(np_for_norm, labeled_window)
 
-        dataset_df  = pd.DataFrame(np_for_norm[1:].tolist(), columns=dl.col_names, dtype="float64")
-        df_normalized = dl.normalize_df(dataset_df).iloc[ :, 2:-2]
+    dataset_df  = pd.DataFrame(np_for_norm[1:].tolist(), columns=dl.col_names, dtype="float64")
+    df_normalized = dl.normalize_df(dataset_df).iloc[ :, 2:-2]
 
-        X = df_normalized.to_numpy()
-        
-        X = np.array([X])
-        
-        ##Inference on Window
-        #
-        probabilities_class, _, predicted_class = predictor.get_X_preds(X, with_decoded=True)
-        
-        predictor_probas_np = probabilities_class.numpy()[0]
-       
-        class_predicted = None
-        temp = 0
-        for i, elem in enumerate(predictor_probas_np):
-                            if elem >= threshold and elem >= temp:
-                                class_predicted = i
-                                temp = elem
-                                print(elem)
+    X = df_normalized.to_numpy()
+    
+    X = np.array([X])
+    
+    ##Inference on Window
+    #
+    probabilities_class, _, predicted_class = predictor.get_X_preds(X, with_decoded=True)
+    
+    predictor_probas_np = probabilities_class.numpy()[0]
+    
+    class_predicted = None
+    temp = 0
+    for i, elem in enumerate(predictor_probas_np):
+                        if elem >= threshold and elem >= temp:
+                            class_predicted = i
+                            temp = elem
+                            print(elem)
 
-        ##return: default: None, otherwise Class
-        return class_predicted
+    ##return: default: None, otherwise Class
+    return class_predicted
 
 def get_camera_matrixes(img, rot_angle,):
     size = img.shape

@@ -6,7 +6,7 @@ class media_player:
         self.switch = "idle"
         self.instance = self.init_instance()
 
-        self.max_tap = 12
+        self.max_tap = 2
         self.curr_tap = 0
 
 
@@ -28,7 +28,7 @@ class media_player:
                 case "start_tap":
                     media = vlc.Media("datensammeln/tap_loop_start0001-0059.mp4")
                     self.switch = "tapping"
-                    self.curr_tap = 0
+                    self.curr_tap = 1
                 case "tapping":
                     self.curr_tap += 1
                     media = vlc.Media("datensammeln/tap_loop_start0060-0088.mp4")
