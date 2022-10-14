@@ -173,13 +173,12 @@ def main():
 
     rot_M, cam_M = get_camera_matrixes(img, rot_angle)
 
-    timer = 0 # our variable for *absolute* time measurement
-    last_t = 0 # cache var
+    
 
     dl = dataloader(scenario = 3, nr_taps = nr_taps, move_window_by = move_by, feature_list = ['nosetip_y'] )
     num_params = len(dl.column_dict)-1
     
-    dataset_np = init_params(num_params)
+    dataset_np, timer_in_sec, last_t = init_params(num_params)
 
     font = cv2.FONT_HERSHEY_SIMPLEX 
     # 3D model points.
@@ -224,11 +223,11 @@ def main():
                 dist = 0
             
 
-            timer, last_t = wait_for_face(timer, last_t, dist)
+            timer_in_sec, last_t = wait_for_face(timer_in_sec, last_t, dist)
 
-            if timer > 5 and player.switch == "idle":
+            if int(timer_in_sec) == 5 and player.switch == "idle":
                 player.switch = "start_tap"
-            elif timer < 5 and player.switch == "tapping": 
+            elif timer_in_sec < 5 and player.switch == "tapping": 
                 player.switch = "end_tap"
 
             if dataset_np.shape[0] % window_size == 0:
@@ -236,12 +235,13 @@ def main():
             
             color = (0,255,0) if stop_idle else (255,0,0)
 
-            cv2.putText(img, str(int(timer)), [100,100], font, 2, color, 3)
+            cv2.putText(img, str(int(timer_in_sec)), [100,100], font, 2, color, 3)
             cv2.putText(img, str(dist), [180,100], font, 2, color, 3)
 
             #### reset for new participant
             if player.switch == "end_tap":
-                dataset_np = np.empty((num_params))
+                dataset_np, timer_in_sec, last_t = init_params(num_params)
+                print("restart")
                 #### dave dataset if you want
 
 
@@ -259,7 +259,9 @@ def main():
     return
 def init_params(num_params):
     dataset_np = np.empty((num_params))
-    return dataset_np
+    timer_in_sec = 0 # our variable for *absolute* time measurement
+    last_t = 0 # cache var
+    return dataset_np, timer_in_sec, last_t
 
 def make_pred(dl, dataset_np, predictor, threshold):
     
@@ -332,7 +334,7 @@ def get_camera_matrixes(img, rot_angle,):
     return M, camera_matrix
 
 
-def wait_for_face(timer, last_t, dist):
+def wait_for_face(timer_in_sec, last_t, dist):
     #global found_face, stop_idle
     thresh = 40
 
@@ -344,11 +346,11 @@ def wait_for_face(timer, last_t, dist):
     # try to detect person
 
     if dist > thresh:
-        timer += dt  # sum up
-        #print(timer)
+        timer_in_sec += dt  # sum up
+        #print(timer_in_sec)
     else:
-        timer = 0    # reset
-    return timer, last_t
+        timer_in_sec = 0    # reset
+    return timer_in_sec, last_t
     
 def find_face(img, face_model):
     faces = find_faces(img, face_model)
