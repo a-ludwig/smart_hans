@@ -1,3 +1,4 @@
+from ast import And
 from cProfile import label
 #from curses import window
 from glob import glob
@@ -248,6 +249,9 @@ def main():
     return
 
 def make_pred(dl, dataset_np, predictor, threshold):
+    
+    '''Takes in dataloader object, a windowed dataframe, a tsai predictor and a custom threshold according to the problem.
+        Returns None (default) if no class with probability above threshold is received.'''
     class_predicted = None
     
     if dataset_np.shape[0] % dl.window_size == 0 :
@@ -288,9 +292,11 @@ def make_pred(dl, dataset_np, predictor, threshold):
         predictor_probas_np = probabilities_class.numpy()[0]
        
         class_predicted = None
+        temp = 0
         for i, elem in enumerate(predictor_probas_np):
-                            if elem >= threshold:
+                            if elem >= threshold and elem >= temp:
                                 class_predicted = i
+                                temp = elem
                                 print(elem)
 
         ##return: default: None, otherwise Class
