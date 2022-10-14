@@ -193,13 +193,15 @@ def main():
 
     ## Face distance
     dist = 0
-
+    curr_win_size = 0
+    dl.window_size = 28
 
     ## Gameloop - 30FPS repeating execution loop
     while True:
         ret, img = cap.read()
-        fps = cap.get(cv2.CAP_PROP_FPS)
+        
         if ret == True:
+            fps = cap.get(cv2.CAP_PROP_FPS)
             #rot image
             img = cv2.warpAffine(img, rot_M, (img.shape[1], img.shape[0]))
             #dist = 0
@@ -216,11 +218,15 @@ def main():
 
                 dist = get_face_dist(image_points)
 
-                if player.switch == "tapping" and player.curr_tap > 1:
-                    dataset_np = np.vstack ([dataset_np, all_points_np])
+                if player.switch == "tapping" and player.curr_tap >= 1:
+                    #dataset_np = np.vstack ([dataset_np, all_points_np])
+                    curr_win_size += 1
+                    print(curr_win_size)
+
             else:
                 player.switch = "idle"
                 dist = 0
+                curr_win_size = 0
             
 
             timer_in_sec, last_t = wait_for_face(timer_in_sec, last_t, dist)
@@ -230,13 +236,21 @@ def main():
             elif timer_in_sec < 5 and player.switch == "tapping": 
                 player.switch = "end_tap"
 
-            if dataset_np.shape[0] % dl.window_size == 0:
-                predicted_class = make_pred(dl, dataset_np, predictor, threshold=0)
+
+
+            if curr_win_size % dl.window_size == 0: #dataset_np.shape[0] % dl.window_size == 0:
+                #curr_win_size = 0
+                print(f"im predicting at tap:{player.curr_tap}")
+                #predicted_class = make_pred(dl, dataset_np, predictor, threshold=0.6)
+                #print(f"predicted klass: {predicted_class}")
+                #if predicted_class == 1:
+                #    player.switch = "end_tap"
             
             color = (0,255,0) if stop_idle else (255,0,0)
 
-            cv2.putText(img, str(int(timer_in_sec)), [100,100], font, 2, color, 3)
-            cv2.putText(img, str(dist), [180,100], font, 2, color, 3)
+            #cv2.putText(img, str(int(timer_in_sec)), [100,100], font, 2, color, 3)
+            #cv2.putText(img, str(dist), [180,100], font, 2, color, 3)
+            #cv2.putText(img, str(fps), [100,200], font, 2, (0,0,255), 3)
 
             #### reset for new participant
             if player.switch == "end_tap":
@@ -247,7 +261,7 @@ def main():
 
            # to_df_and_window(image_points = data ,tap_num = curr_num, window_size = window_size, move_by = move_by)
             ##############
-            cv2.imshow('img', img)
+            #cv2.imshow('img', img)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
         else:
@@ -299,6 +313,7 @@ def make_pred(dl, dataset_np, predictor, threshold):
     
     X = np.array([X])
     
+    print(X)
     ##Inference on Window
     #
     probabilities_class, _, predicted_class = predictor.get_X_preds(X, with_decoded=True)
@@ -335,7 +350,7 @@ def get_camera_matrixes(img, rot_angle,):
 
 def wait_for_face(timer_in_sec, last_t, dist):
     #global found_face, stop_idle
-    thresh = 40
+    thresh = 35
 
     # detection loop
     now = time.time() # in seconds 

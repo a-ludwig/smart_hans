@@ -6,7 +6,7 @@ class media_player:
         self.switch = "idle"
         self.instance = self.init_instance()
 
-        self.max_tap = 2
+        self.max_tap = 12
         self.curr_tap = 0
 
 
