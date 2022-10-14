@@ -12,9 +12,9 @@ import keyboard
 import os
 import sys
 
-import pathlib
-temp = pathlib.PosixPath
-pathlib.PosixPath = pathlib.WindowsPath
+# import pathlib
+# temp = pathlib.PosixPath
+# pathlib.PosixPath = pathlib.WindowsPath
 
 from headpose_opencv.face_detector import get_face_detector, find_faces
 from headpose_opencv.face_landmarks import get_landmark_model, detect_marks
@@ -192,8 +192,12 @@ def main():
                                 (-150.0, -150.0, -125.0),    # Left Mouth corner
                                 (150.0, -150.0, -125.0)      # Right mouth corner
                             ])
+
+    ## Face distance
     dist = 0
 
+
+    ## Gameloop - 30FPS repeating execution loop
     while True:
         ret, img = cap.read()
         fps = cap.get(cv2.CAP_PROP_FPS)
@@ -221,7 +225,7 @@ def main():
             
 
             if dataset_np.shape[0] % window_size == 0:
-                test_pred = make_pred(dl, dataset_np, predictor)
+                predicted_class = make_pred(dl, dataset_np, predictor, threshold=0)
             
             
 
@@ -243,7 +247,9 @@ def main():
 
     return
 
-def make_pred(dl, dataset_np, predictor):
+def make_pred(dl, dataset_np, predictor, threshold):
+    class_predicted = None
+    
     if dataset_np.shape[0] % dl.window_size == 0 :
         ##
         delim = -dl.window_size + dl.move_window_by
@@ -274,10 +280,21 @@ def make_pred(dl, dataset_np, predictor):
         X = df_normalized.to_numpy()
         
         X = np.array([X])
-        test_probas, test_targets, test_preds = predictor.get_X_preds(X, with_decoded=True)
-        #print(test_probas, test_targets, test_preds)
-        #print(X)
-        return test_preds
+        
+        ##Inference on Window
+        #
+        probabilities_class, _, predicted_class = predictor.get_X_preds(X, with_decoded=True)
+        
+        predictor_probas_np = probabilities_class.numpy()[0]
+       
+        class_predicted = None
+        for i, elem in enumerate(predictor_probas_np):
+                            if elem >= threshold:
+                                class_predicted = i
+                                print(elem)
+
+        ##return: default: None, otherwise Class
+        return class_predicted
 
 def get_camera_matrixes(img, rot_angle,):
     size = img.shape
@@ -432,7 +449,6 @@ def get_face_dist(image_points):
 def handle_vlc(vlc_instance, stop_idle):
     #global stop_idle
     
-
     
     if vlc_instance.is_playing() == 0:      
     
