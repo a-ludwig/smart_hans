@@ -2,6 +2,8 @@ import cv2
 import numpy as np
 import math
 import time
+import os
+
 
 from imutils.video import FPS
 
@@ -19,7 +21,7 @@ import vlc
 
 from tsai.all import *
 
-rot_angle = 0
+rot_angle = 270
 debug = True
 found_face = False
 stop_idle = False
@@ -145,7 +147,7 @@ def head_pose_points(img, rotation_vector, translation_vector, camera_matrix):
 def main():
     
     nr_taps = 1
-    tap_size = 40
+    tap_size = 35
     window_size = tap_size * nr_taps
     move_by = 0
 
@@ -166,7 +168,7 @@ def main():
 
     
 
-    dl = dataloader(scenario = 3, nr_taps = nr_taps, move_window_by = move_by, feature_list = ['nosetip_y'] )
+    dl = dataloader(scenario = 3, nr_taps = nr_taps, tap_size = tap_size, move_window_by = move_by, feature_list = ['right_eye_corner_x'] )
     num_params = len(dl.column_dict)-1
     
     dataset_np, timer_in_sec, last_t = init_params(num_params)
@@ -185,7 +187,7 @@ def main():
     ## Face distance
     dist = 0
     curr_win_size = 0
-    dl.window_size = 28
+    # dl.window_size = 28
 
     ## Gameloop - 30FPS repeating execution loop
     while True:
@@ -211,9 +213,9 @@ def main():
                 dist = get_face_dist(image_points)
 
                 if player.switch == "tapping" and player.curr_tap >= 1:
-                    #dataset_np = np.vstack ([dataset_np, all_points_np])
+                    dataset_np = np.vstack ([dataset_np, all_points_np])
                     curr_win_size += 1
-                    print(curr_win_size)
+                    print(dataset_np.shape[0])
 
             else:
                 player.switch = "idle"
@@ -230,13 +232,13 @@ def main():
 
 
 
-            if curr_win_size % dl.window_size == 0: #dataset_np.shape[0] % dl.window_size == 0:
+            if  dataset_np.shape[0] % int(dl.window_size) == 0: #modulo von dataset_len % dl.window_size + abs(dl.moveby)
                 #curr_win_size = 0
                 print(f"im predicting at tap:{player.curr_tap}")
-                #predicted_class = make_pred(dl, dataset_np, predictor, threshold=0.6)
-                #print(f"predicted klass: {predicted_class}")
-                #if predicted_class == 1:
-                #    player.switch = "end_tap"
+                predicted_class = make_pred(dl, dataset_np, predictor, threshold=0.5)
+                print(f"predicted class: {predicted_class}")
+                if predicted_class == 1:
+                    player.switch = "end_tap"
             
             # update the FPS counter
             fps.update()
@@ -245,14 +247,14 @@ def main():
 
             color = (0,255,0) if stop_idle else (255,0,0)
 
-            #cv2.putText(img, str(int(timer_in_sec)), [100,100], font, 2, color, 3)
-            #cv2.putText(img, str(dist), [180,100], font, 2, color, 3)
+            cv2.putText(img, str(int(timer_in_sec)), [100,100], font, 2, color, 3)
+            cv2.putText(img, str(dist), [180,100], font, 2, color, 3)
             cv2.putText(img, str(int(fps.fps())), [100,200], font, 2, (0,0,255), 3)
 
             #### reset for new participant
             if player.switch == "end_tap":
                 dataset_np, timer_in_sec, last_t = init_params(num_params)
-                print("restart")
+               # print("restart")
                 #### dave dataset if you want
 
 
@@ -282,6 +284,7 @@ def make_pred(dl, dataset_np, predictor, threshold):
     ##
     delim = -dl.window_size + dl.move_window_by
     window_arr = dataset_np[delim:]
+    #print(window_arr)
 
     ##np to df normalize and predict
     #
@@ -303,7 +306,7 @@ def make_pred(dl, dataset_np, predictor, threshold):
         np_for_norm = dl.stack_dataset(np_for_norm, labeled_window)
 
     dataset_df  = pd.DataFrame(np_for_norm[1:].tolist(), columns=dl.col_names, dtype="float64")
-    df_normalized = dl.normalize_df(dataset_df).iloc[ :, 2:-2]
+    df_normalized = dl.normalize_df_by_window(dataset_df).iloc[ :, 2:-2]
 
     X = df_normalized.to_numpy()
     
