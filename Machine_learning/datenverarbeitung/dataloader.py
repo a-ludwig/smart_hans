@@ -171,11 +171,11 @@ class dataloader:
                         j = -(self.nr_taps - i)
                     if target == 1:
                         j = i
-                    if k == 0:
-                        new_target = 0 + target + 1 
-                    else:
-                        new_target = pow(10, k) + target+1
-                    
+                    # if k == 0:
+                    #     new_target = 0 + target + 1 
+                    # else:
+                    #     new_target = pow(10, k) + target+1
+                    new_target = target
                     #define delimeter 
                     start_del = (target_tap_nr + j + 1) * self.tap_size + self.move_window_by
                     end_del = (target_tap_nr + j + 2) * self.tap_size + self.move_window_by
@@ -250,8 +250,8 @@ class dataloader:
         return df_max_scaled
 
     def split_train_test(self, df, frac = 0.8, seed = 0):
-        train = df.sample(frac=frac,random_state=seed)
-        test = df.drop(train.index)
+        test = df.sample(frac=frac,random_state=seed)
+        train = df.drop(test.index)
         return train, test
 
     def get_labeled_window(self, target, file_num, feature, window_list, file):
