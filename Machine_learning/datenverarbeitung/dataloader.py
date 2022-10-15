@@ -5,7 +5,7 @@ import pandas as pd
 
 
 class dataloader:
-    def __init__(self, path="leer", scenario=3, nr_taps = 1, move_window_by = 0, feature_list = [], tap_size = 40, frac = 0.2):
+    def __init__(self, path="leer", scenario=3, nr_taps = 1, move_window_by = 0, feature_list = [], tap_size = 40, frac = 0.7):
         self.path = path
 
         self.feature_list = feature_list
@@ -250,8 +250,8 @@ class dataloader:
         return df_max_scaled
 
     def split_train_test(self, df, frac = 0.8, seed = 0):
-        test = df.sample(frac=frac,random_state=seed)
-        train = df.drop(test.index)
+        train = df.sample(frac=frac,random_state=seed)
+        test = df.drop(train.index)
         return train, test
 
     def get_labeled_window(self, target, file_num, feature, window_list, file):
