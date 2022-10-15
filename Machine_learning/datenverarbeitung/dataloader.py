@@ -97,7 +97,8 @@ class dataloader:
 
         dataset_df  = pd.DataFrame(dataset_np[1:].tolist(), columns=self.col_names, dtype="float64")
         
-        df_normalized = self.normalize_df(dataset_df)
+        #df_normalized = self.normalize_df_by_feature(dataset_df)
+        df_normalized = self.normalize_df_by_window(dataset_df)
 
         self.df_labled = df_normalized
 
@@ -203,7 +204,7 @@ class dataloader:
         col_names.append('file_name')
         return col_names
 
-    def normalize_df(self, df):
+    def normalize_df_by_feature(self, df):
         if self.univariate == True:
             start_del = 1
             end_del = -1
@@ -229,7 +230,23 @@ class dataloader:
                 else:
                     if row['feature'] == float(i):
                         df_max_scaled.iloc[idx, start_del:end_del] = (df_max_scaled.iloc[idx, start_del:end_del].abs() - min)/ (max-min)
+        return df_max_scaled
 
+    def normalize_df_by_window(self, df):
+        if self.univariate == True:
+            start_del = 1
+            end_del = -1
+        else:
+            start_del = 2
+            end_del = -2
+        df_max_scaled = df.copy()
+
+        df_feature_max_scaled = df
+        for idx, row in df_max_scaled.iterrows():
+            max = df_feature_max_scaled.iloc[idx, start_del:end_del].abs().max().max()
+            min = df_feature_max_scaled.iloc[idx, start_del:end_del].abs().min().min()
+
+            df_max_scaled.iloc[idx, start_del:end_del] = (df_max_scaled.iloc[idx, start_del:end_del].abs() - min)/ (max-min)
         return df_max_scaled
 
     def split_train_test(self, df, frac = 0.8, seed = 0):
@@ -251,8 +268,6 @@ class dataloader:
         if not self.univariate:
             labeled_arr = np.append(labeled_arr, t_arr)
         labeled_arr = np.append(labeled_arr, [file[:-4]])#filename without csv
-        
-
         return labeled_arr
 
     def stack_dataset(self, dataset_np, labeled_window):
