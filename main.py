@@ -1,17 +1,9 @@
-from ast import And
-from cProfile import label
-#from curses import window
-from glob import glob
-from lib2to3.pgen2.pgen import DFAState
-from turtle import right
 import cv2
 import numpy as np
 import math
-import threading
 import time
-import keyboard
-import os
-import sys
+
+from imutils.video import FPS
 
 import pathlib
 temp = pathlib.PosixPath
@@ -27,7 +19,7 @@ import vlc
 
 from tsai.all import *
 
-rot_angle = 270
+rot_angle = 0
 debug = True
 found_face = False
 stop_idle = False
@@ -170,7 +162,6 @@ def main():
     #cap = cv2.VideoCapture(0)
     cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
     ret, img = cap.read()
-
     rot_M, cam_M = get_camera_matrixes(img, rot_angle)
 
     
@@ -199,9 +190,10 @@ def main():
     ## Gameloop - 30FPS repeating execution loop
     while True:
         ret, img = cap.read()
+        fps = FPS().start()
         
         if ret == True:
-            fps = cap.get(cv2.CAP_PROP_FPS)
+            #fps = cap.get(cv2.CAP_PROP_FPS)
             #rot image
             img = cv2.warpAffine(img, rot_M, (img.shape[1], img.shape[0]))
             #dist = 0
@@ -246,11 +238,16 @@ def main():
                 #if predicted_class == 1:
                 #    player.switch = "end_tap"
             
+            # update the FPS counter
+            fps.update()
+            fps.stop()
+
+
             color = (0,255,0) if stop_idle else (255,0,0)
 
             #cv2.putText(img, str(int(timer_in_sec)), [100,100], font, 2, color, 3)
             #cv2.putText(img, str(dist), [180,100], font, 2, color, 3)
-            #cv2.putText(img, str(fps), [100,200], font, 2, (0,0,255), 3)
+            cv2.putText(img, str(int(fps.fps())), [100,200], font, 2, (0,0,255), 3)
 
             #### reset for new participant
             if player.switch == "end_tap":
@@ -261,16 +258,15 @@ def main():
 
            # to_df_and_window(image_points = data ,tap_num = curr_num, window_size = window_size, move_by = move_by)
             ##############
-            #cv2.imshow('img', img)
+            cv2.imshow('img', img)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
         else:
             break
     cv2.destroyAllWindows()
     cap.release()
-
-
     return
+
 def init_params(num_params):
     dataset_np = np.empty((num_params))
     timer_in_sec = 0 # our variable for *absolute* time measurement
