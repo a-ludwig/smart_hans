@@ -1,3 +1,4 @@
+from cmath import nan
 import enum
 import os
 import numpy as np
@@ -246,7 +247,14 @@ class dataloader:
             max = df_feature_max_scaled.iloc[idx, start_del:end_del].abs().max().max()
             min = df_feature_max_scaled.iloc[idx, start_del:end_del].abs().min().min()
 
-            df_max_scaled.iloc[idx, start_del:end_del] = (df_max_scaled.iloc[idx, start_del:end_del].abs() - min)/ (max-min)
+            
+            ##dirty fix for min-max issue when min = max
+            divisor = max-min
+            if divisor == 0:
+                df_max_scaled.iloc[idx, start_del:end_del] = 0
+            else:
+                df_max_scaled.iloc[idx, start_del:end_del] = (df_max_scaled.iloc[idx, start_del:end_del].abs() - min)/ divisor
+            
         return df_max_scaled
 
     def split_train_test(self, df, frac = 0.8, seed = 0):
