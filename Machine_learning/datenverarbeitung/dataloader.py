@@ -91,8 +91,8 @@ class dataloader:
 
                 dataset_np = self.get_scenario_1_2(feature_arr_list, target_tap_nr, file, dataset_np)
 
-            if self.scenario == 3:
-                dataset_np = self.get_scenario_3(feature_arr_list, target_tap_nr, file, dataset_np)
+            if self.scenario == 3 or self.scenario == 4:
+                dataset_np = self.get_scenario_3_4(feature_arr_list, target_tap_nr, file, dataset_np)
 
 #            self.file_num = self.file_num + 1
 
@@ -149,7 +149,7 @@ class dataloader:
 
         return dataset_np
 
-    def get_scenario_3(self, feature_arr_list, target_tap_nr, file, dataset_np ):
+    def get_scenario_3_4(self, feature_arr_list, target_tap_nr, file, dataset_np ):
         """
         Scenario3 splits one recording in two classes and only two TS.
         Class 0: nr_taps-1 taps before and the target
@@ -160,6 +160,7 @@ class dataloader:
                     move_window_by (int): moves the tap window by given amount
             Returns:
                     train (df), test (df), full_labled(df)
+        Scenario4 works as scenario 3. but cuts off the datastream after the first window that is labeled as target 1.
         """
         for target in range(2):
             for k, elem in enumerate(feature_arr_list):
@@ -185,9 +186,16 @@ class dataloader:
                     window_arr = elem[start_del : end_del]
                     window_list.append(window_arr)
 
+                if self.scenario == 3:
+                    labeled_window = self.get_labeled_window(new_target, self.file_num, k , window_list, file)
+                    dataset_np = self.stack_dataset(dataset_np, labeled_window)
+                if self.scenario == 4:
                     
-                labeled_window = self.get_labeled_window(new_target, self.file_num, k , window_list, file)
-                dataset_np = self.stack_dataset(dataset_np, labeled_window)
+                    labeled_window = self.get_labeled_window(new_target, self.file_num, k , window_list, file)
+                    dataset_np = self.stack_dataset(dataset_np, labeled_window)
+                    if (dataset_np[-1][0] == '1.0' and target == 1):
+                        break
+                        
             self.file_num = self.file_num +1
         return dataset_np
 
@@ -250,11 +258,14 @@ class dataloader:
             
             ##dirty fix for min-max issue when min = max
             divisor = max-min
+            empty_frames = []
             if divisor == 0:
-                df_max_scaled.iloc[idx, start_del:end_del] = 0
+                print("dropping frame")
             else:
                 df_max_scaled.iloc[idx, start_del:end_del] = (df_max_scaled.iloc[idx, start_del:end_del].abs() - min)/ divisor
             
+        # for elem in empty_frames:
+        #     df_max_scaled.drop(elem)
         return df_max_scaled
 
     def split_train_test(self, df, frac = 0.8, seed = 0):
