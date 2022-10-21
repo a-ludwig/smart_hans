@@ -212,7 +212,7 @@ def main():
 
                 dist = get_face_dist(image_points)
 
-                if player.switch == "tapping" and player.curr_tap >= 1:
+                if player.switch == "tapping" and player.curr_tap >= 2:
                     dataset_np = np.vstack ([dataset_np, all_points_np])
                     curr_win_size += 1
                     print(dataset_np.shape[0])
