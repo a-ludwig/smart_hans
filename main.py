@@ -230,12 +230,10 @@ def main():
             elif timer_in_sec < 5 and player.switch == "tapping": 
                 player.switch = "end_tap"
 
-
-
             if  dataset_np.shape[0] % int(dl.window_size) == 0: #modulo von dataset_len % dl.window_size + abs(dl.moveby)
                 #curr_win_size = 0
                 print(f"im predicting at tap:{player.curr_tap}")
-                predicted_class = make_pred(dl, dataset_np, predictor, threshold=0.5)
+                predicted_class = make_pred(dl, dataset_np, predictor, threshold=0.7)
                 print(f"predicted class: {predicted_class}")
                 if predicted_class == 1:
                     player.switch = "end_tap"
@@ -254,7 +252,7 @@ def main():
             #### reset for new participant
             if player.switch == "end_tap":
                 dataset_np, timer_in_sec, last_t = init_params(num_params)
-               # print("restart")
+                print("restart")
                 #### dave dataset if you want
 
 
@@ -381,6 +379,7 @@ def estimate_head_pose(img, model_points, camera_matrix, face_model, landmark_mo
     
     face = faces[0]
     marks = detect_marks(img, landmark_model, face)
+    
     # mark_detector.draw_marks(img, marks, color=(0, 255, 0))
     image_points = np.array([
                             marks[30],     # Nose tip

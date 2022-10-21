@@ -23,7 +23,7 @@ class media_player:
             match self.switch:
                 
                 case "idle":
-                    media = vlc.Media("datensammeln/tap_loop_start0900-1050.mp4")
+                    media = vlc.Media("datensammeln/looking_around.mp4")
                     print("idleing")
                 case "start_tap":
                     media = vlc.Media("datensammeln/tap_loop_start0001-0059.mp4")
@@ -37,6 +37,9 @@ class media_player:
                         self.switch = "end_tap"
                 case "end_tap":
                     media = vlc.Media("datensammeln/tap_loop_start0118-0139.mp4")
-                    self.switch = "idle"
+                    self.switch = "announce_end"
+                case "announce_end":
+                     media = vlc.Media("datensammeln/tap_loop_start0900-1050.mp4")
+                     self.switch = "idle"
             self.instance.set_media(media)
             self.instance.play()
