@@ -259,13 +259,15 @@ class dataloader:
             ##dirty fix for min-max issue when min = max
             divisor = max-min
             empty_frames = []
-            if divisor == 0:
+            if divisor == 0 :
+                #empty_frames.append(idx)
                 print("dropping frame")
+                df_max_scaled.drop(index=idx)
             else:
                 df_max_scaled.iloc[idx, start_del:end_del] = (df_max_scaled.iloc[idx, start_del:end_del].abs() - min)/ divisor
             
-        # for elem in empty_frames:
-        #     df_max_scaled.drop(elem)
+        #for elem in empty_frames:
+         #    df_max_scaled.drop(elem)
         return df_max_scaled
 
     def split_train_test(self, df, frac = 0.8, seed = 0):
