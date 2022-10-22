@@ -171,7 +171,7 @@ def main():
     dl = dataloader(scenario = 3, nr_taps = nr_taps, tap_size = tap_size, move_window_by = move_by, feature_list = ['right_eye_corner_x'] )
     num_params = len(dl.column_dict)-1
     
-    dataset_np, timer_in_sec, last_t = init_params(num_params)
+    dataset_np, timer_in_sec, last_t, data = init_params(num_params)
 
     font = cv2.FONT_HERSHEY_SIMPLEX 
     # 3D model points.
@@ -208,21 +208,23 @@ def main():
             faces, face_found = find_face(img, face_model)
             
             if face_found:
-                img, image_points, all_points_np = estimate_head_pose(img, model_points, cam_M, face_model, landmark_model, faces)
+                img, image_points, all_points = estimate_head_pose(img, model_points, cam_M, face_model, landmark_model, faces)
 
                 dist = get_face_dist(image_points)
 
                 if player.switch == "tapping" and player.curr_tap >= 1:
-                    dataset_np = np.vstack ([dataset_np, all_points_np])
+                    #dataset_np = np.vstack ([dataset_np, all_points_np])
+                    data.append(all_points)
                     curr_win_size += 1
                     
                     #print(dataset_np.shape[0])
+                    delim = (len(data) + dl.move_window_by) if dl.move_window_by >=0 else len(data) 
 
-                    if  dataset_np.shape[0] % 28 == 0 and player.curr_tap >= 3: #modulo von dataset_len % dl.window_size + abs(dl.moveby)
+                    if delim % (28/2) == 0 and player.curr_tap >= 3: #modulo von dataset_len % dl.window_size + abs(dl.moveby)
                         #curr_win_size = 0
-                        print(dataset_np.shape[0])
+                        #print(dataset_np.shape[0])
                         print(f"im predicting at tap:{player.curr_tap}")
-                        predicted_class = make_pred(dl, dataset_np, predictor, threshold=0.7)
+                        predicted_class = make_pred(dl, data, predictor, threshold=0.7)
                         print(f"predicted class: {predicted_class}")
                         if predicted_class == 1:
                             player.switch = "end_tap"
@@ -255,7 +257,9 @@ def main():
 
             #### reset for new participant
             if player.switch == "end_tap":
-                dataset_np, timer_in_sec, last_t = init_params(num_params)
+                df2 = pd.DataFrame(data)
+                df2.to_csv("installation_export/test.csv")
+                dataset_np, timer_in_sec, last_t, data = init_params(num_params)
                 #print("restart")
                 #### dave dataset if you want
 
@@ -273,39 +277,37 @@ def main():
 
 def init_params(num_params):
     dataset_np = np.empty((num_params))
+    data = []
     timer_in_sec = 0 # our variable for *absolute* time measurement
     last_t = 0 # cache var
-    return dataset_np, timer_in_sec, last_t
+    return dataset_np, timer_in_sec, last_t, data
 
-def make_pred(dl, dataset_np, predictor, threshold):
+def make_pred(dl, data, predictor, threshold):
     
     '''Takes in dataloader object, a windowed dataframe, a tsai predictor and a custom threshold according to the problem.
         Returns None (default) if no class with probability above threshold is received.'''
     class_predicted = None
     
     ##
-    delim = -dl.window_size + dl.move_window_by
-    window_arr = dataset_np[delim:]
+    delim = -dl.window_size - dl.move_window_by if dl.move_window_by < 0 else -dl.window_size
+    window_arr = np.array(data[delim:])
+    
     #print(window_arr)
 
     ##np to df normalize and predict
     #
-
-    feature_arr_list = []
-    
-
     for elem in dl.feature_list:
         index = dl.column_dict[elem]
-        feature_arr_list.append(window_arr[:,index])
+        window_arr = window_arr[:,index]
     
     dl.univariate = False
     dl.col_names = dl.get_col_names(dl.window_size)
     np_for_norm = np.array([dl.col_names])
 
-    for j, elem in enumerate(feature_arr_list):
-        labeled_window = np.append(np.array([1, j+1]), elem)
-        labeled_window = np.append(labeled_window, np.array(['target', 'filename']))
-        np_for_norm = dl.stack_dataset(np_for_norm, labeled_window)
+    #for j, elem in enumerate(feature_arr_list):
+    labeled_window = np.append(np.array([1, 1]), window_arr)
+    labeled_window = np.append(labeled_window, np.array(['target', 'filename']))
+    np_for_norm = dl.stack_dataset(np_for_norm, labeled_window)
 
     dataset_df  = pd.DataFrame(np_for_norm[1:].tolist(), columns=dl.col_names, dtype="float64")
     df_normalized = dl.normalize_df_by_window(dataset_df).iloc[ :, 2:-2]
@@ -462,7 +464,7 @@ def estimate_head_pose(img, model_points, camera_matrix, face_model, landmark_mo
         pitch,
         roll,
         yaw,
-        ])
+    ])
     
 
     return img, image_points, all_points_np
