@@ -21,7 +21,7 @@ import vlc
 
 from tsai.all import *
 
-rot_angle = 270
+rot_angle = 0
 debug = True
 found_face = False
 stop_idle = False
@@ -212,10 +212,20 @@ def main():
 
                 dist = get_face_dist(image_points)
 
-                if player.switch == "tapping" and player.curr_tap >= 2:
+                if player.switch == "tapping" and player.curr_tap >= 1:
                     dataset_np = np.vstack ([dataset_np, all_points_np])
                     curr_win_size += 1
-                    print(dataset_np.shape[0])
+                    
+                    #print(dataset_np.shape[0])
+
+                    if  dataset_np.shape[0] % 28 == 0 and player.curr_tap >= 3: #modulo von dataset_len % dl.window_size + abs(dl.moveby)
+                        #curr_win_size = 0
+                        print(dataset_np.shape[0])
+                        print(f"im predicting at tap:{player.curr_tap}")
+                        predicted_class = make_pred(dl, dataset_np, predictor, threshold=0.7)
+                        print(f"predicted class: {predicted_class}")
+                        if predicted_class == 1:
+                            player.switch = "end_tap"
 
             else:
                 player.switch = "idle"
@@ -230,13 +240,7 @@ def main():
             elif timer_in_sec < 5 and player.switch == "tapping": 
                 player.switch = "end_tap"
 
-            if  dataset_np.shape[0] % int(dl.window_size) == 0: #modulo von dataset_len % dl.window_size + abs(dl.moveby)
-                #curr_win_size = 0
-                print(f"im predicting at tap:{player.curr_tap}")
-                predicted_class = make_pred(dl, dataset_np, predictor, threshold=0.7)
-                print(f"predicted class: {predicted_class}")
-                if predicted_class == 1:
-                    player.switch = "end_tap"
+            
             
             # update the FPS counter
             fps.update()
@@ -252,7 +256,7 @@ def main():
             #### reset for new participant
             if player.switch == "end_tap":
                 dataset_np, timer_in_sec, last_t = init_params(num_params)
-                print("restart")
+                #print("restart")
                 #### dave dataset if you want
 
 
@@ -310,7 +314,7 @@ def make_pred(dl, dataset_np, predictor, threshold):
     
     X = np.array([X])
     
-    print(X)
+    #print(X)
     ##Inference on Window
     #
     probabilities_class, _, predicted_class = predictor.get_X_preds(X, with_decoded=True)
@@ -323,7 +327,7 @@ def make_pred(dl, dataset_np, predictor, threshold):
                         if elem >= threshold and elem >= temp:
                             class_predicted = i
                             temp = elem
-                            print(elem)
+                            #print(elem)
 
     ##return: default: None, otherwise Class
     return class_predicted

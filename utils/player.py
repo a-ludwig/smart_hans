@@ -30,7 +30,7 @@ class media_player:
                     self.switch = "tapping"
                     self.curr_tap = 1
                 case "tapping":
-                    print("**TAP**")
+                    print(f"**TAP**  {self.curr_tap}")
                     self.curr_tap += 1
                     media = vlc.Media("datensammeln/tap_loop_start0060-0088.mp4")
                     if self.curr_tap == self.max_tap:
