@@ -218,7 +218,6 @@ def main():
                     #######
                     #Make prediction  n times per cycle(tap)
                     #######
-                    n = 2
                     
                     if delim % (cycle_size/n) == 0 and hansi.curr_tap >= 3: 
 
