@@ -153,6 +153,8 @@ def main():
     cycle_size = 28
     n = 2 ### cycle/n for modulo
 
+    min = 0
+    max = 0
     #load tsai model
     predictor = load_learner_all(path='export', dls_fname='dls', model_fname='model', learner_fname='learner')
     #load hp model
@@ -218,7 +220,7 @@ def main():
                     if delim % (cycle_size/n) == 0 and hansi.curr_tap >= 3: 
 
                         print(f"im predicting at tap:{hansi.curr_tap}")
-                        window_scaled = list_to_norm_win(dl, data)
+                        window_scaled, min, max = list_to_norm_win(dl, data, min, max)
                         predicted_class = make_pred(window_scaled, predictor, threshold=0.7)
                         print(f"predicted class: {predicted_class}")
                         if predicted_class == 1:
@@ -290,7 +292,7 @@ def make_pred( window_scaled,predictor, threshold):
     probabilities_class, _, predicted_class = predictor.get_X_preds(X, with_decoded=True)
     
     predictor_probas_np = probabilities_class.numpy()[0]
-    
+    print(probabilities_class)
     class_predicted = None
     temp = 0
     for i, elem in enumerate(predictor_probas_np):
@@ -302,7 +304,7 @@ def make_pred( window_scaled,predictor, threshold):
     ##return: default: None, otherwise Class
     return class_predicted
 
-def list_to_norm_win(dl, data):
+def list_to_norm_win(dl, data, min, max):
     ##
     delim = -dl.window_size - dl.move_window_by if dl.move_window_by < 0 else -dl.window_size
     window_arr = np.array(data[delim:])
@@ -314,9 +316,13 @@ def list_to_norm_win(dl, data):
 
     ##########
     ###Normalization right here instead of dl
-    max = np.amax(window_arr)
-    min = np.amin(window_arr)
-    divisor = max-min
+    temp_max = np.amax(window_arr)
+    temp_min = np.amin(window_arr)
+    if temp_max > max:
+        max = temp_max
+    if temp_min < min:
+        min = temp_min
+    divisor = temp_max - temp_min#max-min
 
     if divisor == 0 :
         #empty_frames.append(idx)
@@ -325,7 +331,7 @@ def list_to_norm_win(dl, data):
         divisor = 0.5
     
     window_scaled = (window_arr_for_norm - min )/ divisor
-    return window_scaled
+    return window_scaled, min, max
 
 def get_camera_matrixes(img, rot_angle,):
     size = img.shape
