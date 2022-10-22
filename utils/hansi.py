@@ -1,7 +1,7 @@
 import vlc
 
 
-class media_player:
+class hansi:
     def __init__(self ):
         self.switch = "idle"
         self.instance = self.init_instance()

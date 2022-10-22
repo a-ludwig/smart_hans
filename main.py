@@ -14,7 +14,7 @@ pathlib.PosixPath = pathlib.WindowsPath
 from headpose_opencv.face_detector import get_face_detector, find_faces
 from headpose_opencv.face_landmarks import get_landmark_model, detect_marks
 from Machine_learning.datenverarbeitung.dataloader import dataloader
-from utils.player import media_player
+from utils.hansi import hansi
 import pandas as pd
 import numpy as np
 import vlc
@@ -157,7 +157,7 @@ def main():
     face_model = get_face_detector()
     landmark_model = get_landmark_model()
 
-    player = media_player()
+    hans = hansi()
 
     
 
@@ -203,7 +203,7 @@ def main():
             #########
             #datathread now handling vlc also -> no thread
 
-            player.queue()
+            hans.queue()
 
             faces, face_found = find_face(img, face_model)
             
@@ -212,7 +212,7 @@ def main():
 
                 dist = get_face_dist(image_points)
 
-                if player.switch == "tapping" and player.curr_tap >= 1:
+                if hans.switch == "tapping" and hans.curr_tap >= 1:
                     #dataset_np = np.vstack ([dataset_np, all_points_np])
                     data.append(all_points)
                     curr_win_size += 1
@@ -220,27 +220,27 @@ def main():
                     #print(dataset_np.shape[0])
                     delim = (len(data) + dl.move_window_by) if dl.move_window_by >=0 else len(data) 
 
-                    if delim % (28/2) == 0 and player.curr_tap >= 3: #modulo von dataset_len % dl.window_size + abs(dl.moveby)
+                    if delim % (28/2) == 0 and hans.curr_tap >= 3: #modulo von dataset_len % dl.window_size + abs(dl.moveby)
                         #curr_win_size = 0
                         #print(dataset_np.shape[0])
-                        print(f"im predicting at tap:{player.curr_tap}")
+                        print(f"im predicting at tap:{hans.curr_tap}")
                         predicted_class = make_pred(dl, data, predictor, threshold=0.7)
                         print(f"predicted class: {predicted_class}")
                         if predicted_class == 1:
-                            player.switch = "end_tap"
+                            hans.switch = "end_tap"
 
             else:
-                player.switch = "idle"
+                hans.switch = "idle"
                 dist = 0
                 curr_win_size = 0
             
 
             timer_in_sec, last_t = wait_for_face(timer_in_sec, last_t, dist)
 
-            if int(timer_in_sec) == 5 and player.switch == "idle":
-                player.switch = "start_tap"
-            elif timer_in_sec < 5 and player.switch == "tapping": 
-                player.switch = "end_tap"
+            if int(timer_in_sec) == 5 and hans.switch == "idle":
+                hans.switch = "start_tap"
+            elif timer_in_sec < 5 and hans.switch == "tapping": 
+                hans.switch = "end_tap"
 
             
             
@@ -256,7 +256,7 @@ def main():
             cv2.putText(img, str(int(fps.fps())), [100,200], font, 2, (0,0,255), 3)
 
             #### reset for new participant
-            if player.switch == "end_tap":
+            if hans.switch == "end_tap":
                 df2 = pd.DataFrame(data)
                 df2.to_csv("installation_export/test.csv")
                 dataset_np, timer_in_sec, last_t, data = init_params(num_params)
