@@ -1,7 +1,7 @@
 import vlc
 
 
-class hansi:
+class horse:
     def __init__(self ):
         self.switch = "idle"
         self.instance = self.init_instance()

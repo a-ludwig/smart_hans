@@ -14,10 +14,9 @@ pathlib.PosixPath = pathlib.WindowsPath
 from headpose_opencv.face_detector import get_face_detector, find_faces
 from headpose_opencv.face_landmarks import get_landmark_model, detect_marks
 from Machine_learning.datenverarbeitung.dataloader import dataloader
-from utils.hansi import hansi
+from utils.horse import horse
 import pandas as pd
 import numpy as np
-import vlc
 
 from tsai.all import *
 
@@ -151,15 +150,16 @@ def main():
     window_size = tap_size * nr_taps
     move_by = 0
 
+    cycle_size = 28
+    n = 2 ### cycle/n for modulo
+
     #load tsai model
     predictor = load_learner_all(path='export', dls_fname='dls', model_fname='model', learner_fname='learner')
     #load hp model
     face_model = get_face_detector()
     landmark_model = get_landmark_model()
 
-    hans = hansi()
-
-    
+    hansi = horse() ##hansi is our magnificent horse 
 
     #cap = cv2.VideoCapture(0)
     cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
@@ -193,11 +193,9 @@ def main():
     while True:
         ret, img = cap.read()
         fps = FPS().start()
-        
         if ret == True:
-            img = cv2.warpAffine(img, rot_M, (img.shape[1], img.shape[0]))
-
-            hans.queue()
+            img = cv2.warpAffine(img, rot_M, (img.shape[1], img.shape[0]))## rot image
+            hansi.queue()## keep hansi alive
 
             faces, face_found = find_face(img, face_model)
             
@@ -206,20 +204,25 @@ def main():
 
                 dist = get_face_dist(image_points)
 
-                if hans.switch == "tapping" and hans.curr_tap >= 1:
+                if hansi.switch == "tapping" and hansi.curr_tap >= 1:
                     data.append(all_points)
                     curr_win_size += 1
                     
-
                     delim = (len(data) + dl.move_window_by) if dl.move_window_by >=0 else len(data) 
 
-                    if delim % (28/2) == 0 and hans.curr_tap >= 3: 
+                    #######
+                    #Make prediction  n times per cycle(tap)
+                    #######
+                    n = 2
+                    
+                    if delim % (cycle_size/n) == 0 and hansi.curr_tap >= 3: 
 
-                        print(f"im predicting at tap:{hans.curr_tap}")
-                        predicted_class = make_pred(dl, data, predictor, threshold=0.7)
+                        print(f"im predicting at tap:{hansi.curr_tap}")
+                        window_scaled = list_to_norm_win(dl, data)
+                        predicted_class = make_pred(window_scaled, predictor, threshold=0.7)
                         print(f"predicted class: {predicted_class}")
                         if predicted_class == 1:
-                            hans.switch = "end_tap"
+                            hansi.switch = "end_tap"
 
                             #### reset for new participant
                             df2 = pd.DataFrame(data)
@@ -227,17 +230,17 @@ def main():
                             timer_in_sec, last_t, data = init_params(num_params)
 
             else:
-                hans.switch = "idle"
+                hansi.switch = "idle"
                 dist = 0
                 curr_win_size = 0
             
 
             timer_in_sec, last_t = wait_for_face(timer_in_sec, last_t, dist)
 
-            if int(timer_in_sec) == 5 and hans.switch == "idle":
-                hans.switch = "start_tap"
-            elif timer_in_sec < 5 and hans.switch == "tapping": 
-                hans.switch = "end_tap"
+            if int(timer_in_sec) == 5 and hansi.switch == "idle":
+                hansi.switch = "start_tap"
+            elif timer_in_sec < 5 and hansi.switch == "tapping": 
+                hansi.switch = "end_tap"
 
             
             
@@ -270,34 +273,15 @@ def init_params(num_params):
     last_t = 0 # cache var
     return timer_in_sec, last_t, data
 
-def make_pred(dl, data, predictor, threshold):
+def make_pred( window_scaled,predictor, threshold):
     
     '''Takes in dataloader object, a windowed dataframe, a tsai predictor and a custom threshold according to the problem.
         Returns None (default) if no class with probability above threshold is received.'''
     class_predicted = None
     
-    ##
-    delim = -dl.window_size - dl.move_window_by if dl.move_window_by < 0 else -dl.window_size
-    window_arr = np.array(data[delim:])
+    X = window_scaled
     
-    ##work around, actually only one feature
-    for elem in dl.feature_list:
-        index = dl.column_dict[elem]
-        window_arr = window_arr[:,index]
-    
-    dl.univariate = False
-    dl.col_names = dl.get_col_names(dl.window_size)
-    np_for_norm = np.array([dl.col_names])
-
-    labeled_window = np.append(np.array([1, 1]), window_arr)
-    labeled_window = np.append(labeled_window, np.array(['target', 'filename']))
-    np_for_norm = dl.stack_dataset(np_for_norm, labeled_window)
-
-    dataset_df  = pd.DataFrame(np_for_norm[1:].tolist(), columns=dl.col_names, dtype="float64")
-    df_normalized = dl.normalize_df_by_window(dataset_df).iloc[ :, 2:-2]
-
-    X = df_normalized.to_numpy()
-    
+    X = np.array([X])
     X = np.array([X])
     
     #print(X)
@@ -317,6 +301,31 @@ def make_pred(dl, data, predictor, threshold):
 
     ##return: default: None, otherwise Class
     return class_predicted
+
+def list_to_norm_win(dl, data):
+    ##
+    delim = -dl.window_size - dl.move_window_by if dl.move_window_by < 0 else -dl.window_size
+    window_arr = np.array(data[delim:])
+    
+    ##work around, actually only one feature
+    for elem in dl.feature_list:
+        index = dl.column_dict[elem]
+        window_arr_for_norm = window_arr[:,index]
+
+    ##########
+    ###Normalization right here instead of dl
+    max = np.amax(window_arr)
+    min = np.amin(window_arr)
+    divisor = max-min
+
+    if divisor == 0 :
+        #empty_frames.append(idx)
+        print("dropping frame")
+        #df_max_scaled.drop(index=idx)
+        divisor = 0.5
+    
+    window_scaled = (window_arr_for_norm - min )/ divisor
+    return window_scaled
 
 def get_camera_matrixes(img, rot_angle,):
     size = img.shape
@@ -344,8 +353,7 @@ def wait_for_face(timer_in_sec, last_t, dist):
     dt = now - last_t # diff time
     last_t = now      # cache
 
-    # try to detect person
-
+    # face close enough?
     if dist > thresh:
         timer_in_sec += dt  # sum up
         #print(timer_in_sec)
