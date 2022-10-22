@@ -23,7 +23,7 @@ import numpy as np
 
 from tsai.all import *
 
-rot_angle = 0
+rot_angle = 90
 debug = True
 found_face = False
 stop_idle = False
@@ -222,8 +222,10 @@ def main():
                     if delim % (cycle_size/n) == 0 and hansi.curr_tap >= 3: 
 
                         print(f"im predicting at calc_tap:{float(delim/cycle_size)}")
+                        print(delim)
+                        
                         window_scaled, min, max = list_to_norm_win(dl, data, min, max)
-                        predicted_class = make_pred(window_scaled, predictor, threshold=0.38, 1)
+                        predicted_class = make_pred(window_scaled, predictor, threshold=0.66, class_to_look_at=1)
                         print(f"predicted class: {predicted_class}")
                         if predicted_class == 1:
                             hansi.switch = "end_tap"
@@ -309,8 +311,8 @@ def make_pred( window_scaled,predictor, threshold, class_to_look_at):
                             class_predicted = i
                             temp = elem
                             #print(elem)
-    #if predictor_probas_np[class_to_look_at] > threshold:
-    #    class_predicted = class_to_look_at
+    if predictor_probas_np[class_to_look_at] > threshold:
+        class_predicted = class_to_look_at
 
     ##return: default: None, otherwise Class
     return class_predicted
