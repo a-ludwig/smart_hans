@@ -262,7 +262,8 @@ class dataloader:
             if divisor == 0 :
                 #empty_frames.append(idx)
                 print("dropping frame")
-                df_max_scaled.drop(index=idx)
+                #df_max_scaled.drop(index=idx)
+                divisor = 0.5
             else:
                 df_max_scaled.iloc[idx, start_del:end_del] = (df_max_scaled.iloc[idx, start_del:end_del].abs() - min)/ divisor
             
