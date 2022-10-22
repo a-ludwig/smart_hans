@@ -6,7 +6,7 @@ import pandas as pd
 
 
 class dataloader:
-    def __init__(self, path="leer", scenario=3, nr_taps = 1, move_window_by = 0, feature_list = [], tap_size = 40, frac = 0.7):
+    def __init__(self, path="leer", scenario=3, nr_taps = 1, move_window_by = 0, feature_list = [], tap_size = 40, frac = 0.66):
         self.path = path
 
         self.feature_list = feature_list
@@ -60,7 +60,7 @@ class dataloader:
 
         self.col_names = self.get_col_names(self.window_size)
 
-        self.get_train_test(self.frac, seed = 420)
+        self.get_train_test(self.frac, seed = 300)
 
 
     def get_train_test(self, frac, seed):
