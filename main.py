@@ -224,7 +224,7 @@ def main():
 
                         print(f"im predicting at calc_tap:{float(delim/cycle_size)}")
                         window_scaled, min, max = list_to_norm_win(dl, data, min, max)
-                        predicted_class = make_pred(window_scaled, predictor, threshold=0.38)
+                        predicted_class = make_pred(window_scaled, predictor, threshold=0.38, 1)
                         print(f"predicted class: {predicted_class}")
                         if predicted_class == 1:
                             hansi.switch = "end_tap"
@@ -285,12 +285,11 @@ def init_params(num_params):
     last_t = 0 # cache var
     return timer_in_sec, last_t, data
 
-def make_pred( window_scaled,predictor, threshold):
+def make_pred( window_scaled,predictor, threshold, class_to_look_at):
     
     '''Takes in dataloader object, a windowed dataframe, a tsai predictor and a custom threshold according to the problem.
         Returns None (default) if no class with probability above threshold is received.'''
     class_predicted = None
-    class_to_look_at = 1
     
     X = window_scaled
     
@@ -312,7 +311,7 @@ def make_pred( window_scaled,predictor, threshold):
                             temp = elem
                             #print(elem)
     #if predictor_probas_np[class_to_look_at] > threshold:
-    #    class_predicted = 1
+    #    class_predicted = class_to_look_at
 
     ##return: default: None, otherwise Class
     return class_predicted
