@@ -2,7 +2,9 @@ import cv2
 import numpy as np
 import math
 import time
+from datetime import datetime as archi
 import os
+
 
 
 from imutils.video import FPS
@@ -17,6 +19,7 @@ from Machine_learning.datenverarbeitung.dataloader import dataloader
 from utils.horse import horse
 import pandas as pd
 import numpy as np
+
 
 from tsai.all import *
 
@@ -219,17 +222,15 @@ def main():
                     
                     if delim % (cycle_size/n) == 0 and hansi.curr_tap >= 3: 
 
-                        print(f"im predicting at tap:{hansi.curr_tap}")
+                        print(f"im predicting at calc_tap:{float(delim/cycle_size)}")
                         window_scaled, min, max = list_to_norm_win(dl, data, min, max)
-                        predicted_class = make_pred(window_scaled, predictor, threshold=0.7)
+                        predicted_class = make_pred(window_scaled, predictor, threshold=0.38)
                         print(f"predicted class: {predicted_class}")
                         if predicted_class == 1:
                             hansi.switch = "end_tap"
+                            hansi.save = True
 
                             #### reset for new participant
-                            df2 = pd.DataFrame(data)
-                            df2.to_csv("installation_export/test.csv")
-                            timer_in_sec, last_t, data = init_params(num_params)
 
             else:
                 hansi.switch = "idle"
@@ -244,7 +245,16 @@ def main():
             elif timer_in_sec < 5 and hansi.switch == "tapping": 
                 hansi.switch = "end_tap"
 
-            
+            if hansi.switch == "reset_idle":
+                if hansi.save == True:
+                    df2 = pd.DataFrame(data)
+                    now = archi.now()
+                    date_time = now.strftime("%m%d%Y_%H%M%S")
+
+                    df2.to_csv(f"installation_export/inst_exp_{date_time}.csv")
+                    hansi.save = False
+                timer_in_sec, last_t, data = init_params(num_params)
+
             
             # update the FPS counter
             fps.update()
@@ -280,6 +290,7 @@ def make_pred( window_scaled,predictor, threshold):
     '''Takes in dataloader object, a windowed dataframe, a tsai predictor and a custom threshold according to the problem.
         Returns None (default) if no class with probability above threshold is received.'''
     class_predicted = None
+    class_to_look_at = 1
     
     X = window_scaled
     
@@ -300,6 +311,8 @@ def make_pred( window_scaled,predictor, threshold):
                             class_predicted = i
                             temp = elem
                             #print(elem)
+    #if predictor_probas_np[class_to_look_at] > threshold:
+    #    class_predicted = 1
 
     ##return: default: None, otherwise Class
     return class_predicted
