@@ -171,7 +171,7 @@ def main():
     dl = dataloader(scenario = 3, nr_taps = nr_taps, tap_size = tap_size, move_window_by = move_by, feature_list = ['right_eye_corner_x'] )
     num_params = len(dl.column_dict)-1
     
-    dataset_np, timer_in_sec, last_t, data = init_params(num_params)
+    timer_in_sec, last_t, data = init_params(num_params)
 
     font = cv2.FONT_HERSHEY_SIMPLEX 
     # 3D model points.
@@ -195,13 +195,7 @@ def main():
         fps = FPS().start()
         
         if ret == True:
-            #fps = cap.get(cv2.CAP_PROP_FPS)
-            #rot image
             img = cv2.warpAffine(img, rot_M, (img.shape[1], img.shape[0]))
-            #dist = 0
-
-            #########
-            #datathread now handling vlc also -> no thread
 
             hans.queue()
 
@@ -213,21 +207,24 @@ def main():
                 dist = get_face_dist(image_points)
 
                 if hans.switch == "tapping" and hans.curr_tap >= 1:
-                    #dataset_np = np.vstack ([dataset_np, all_points_np])
                     data.append(all_points)
                     curr_win_size += 1
                     
-                    #print(dataset_np.shape[0])
+
                     delim = (len(data) + dl.move_window_by) if dl.move_window_by >=0 else len(data) 
 
-                    if delim % (28/2) == 0 and hans.curr_tap >= 3: #modulo von dataset_len % dl.window_size + abs(dl.moveby)
-                        #curr_win_size = 0
-                        #print(dataset_np.shape[0])
+                    if delim % (28/2) == 0 and hans.curr_tap >= 3: 
+
                         print(f"im predicting at tap:{hans.curr_tap}")
                         predicted_class = make_pred(dl, data, predictor, threshold=0.7)
                         print(f"predicted class: {predicted_class}")
                         if predicted_class == 1:
                             hans.switch = "end_tap"
+
+                            #### reset for new participant
+                            df2 = pd.DataFrame(data)
+                            df2.to_csv("installation_export/test.csv")
+                            timer_in_sec, last_t, data = init_params(num_params)
 
             else:
                 hans.switch = "idle"
@@ -255,16 +252,8 @@ def main():
             cv2.putText(img, str(dist), [180,100], font, 2, color, 3)
             cv2.putText(img, str(int(fps.fps())), [100,200], font, 2, (0,0,255), 3)
 
-            #### reset for new participant
-            if hans.switch == "end_tap":
-                df2 = pd.DataFrame(data)
-                df2.to_csv("installation_export/test.csv")
-                dataset_np, timer_in_sec, last_t, data = init_params(num_params)
-                #print("restart")
-                #### dave dataset if you want
-
-
-           # to_df_and_window(image_points = data ,tap_num = curr_num, window_size = window_size, move_by = move_by)
+            #if hans.switch == "end_tap":
+                
             ##############
             cv2.imshow('img', img)
             if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -276,11 +265,10 @@ def main():
     return
 
 def init_params(num_params):
-    dataset_np = np.empty((num_params))
     data = []
     timer_in_sec = 0 # our variable for *absolute* time measurement
     last_t = 0 # cache var
-    return dataset_np, timer_in_sec, last_t, data
+    return timer_in_sec, last_t, data
 
 def make_pred(dl, data, predictor, threshold):
     
@@ -292,10 +280,7 @@ def make_pred(dl, data, predictor, threshold):
     delim = -dl.window_size - dl.move_window_by if dl.move_window_by < 0 else -dl.window_size
     window_arr = np.array(data[delim:])
     
-    #print(window_arr)
-
-    ##np to df normalize and predict
-    #
+    ##work around, actually only one feature
     for elem in dl.feature_list:
         index = dl.column_dict[elem]
         window_arr = window_arr[:,index]
@@ -304,7 +289,6 @@ def make_pred(dl, data, predictor, threshold):
     dl.col_names = dl.get_col_names(dl.window_size)
     np_for_norm = np.array([dl.col_names])
 
-    #for j, elem in enumerate(feature_arr_list):
     labeled_window = np.append(np.array([1, 1]), window_arr)
     labeled_window = np.append(labeled_window, np.array(['target', 'filename']))
     np_for_norm = dl.stack_dataset(np_for_norm, labeled_window)
@@ -470,94 +454,12 @@ def estimate_head_pose(img, model_points, camera_matrix, face_model, landmark_mo
     return img, image_points, all_points_np
     
 
-    # print(dataset_np)
-
-
 def get_face_dist(image_points):
     chin_y = image_points[1][1]
     right_mouth_corner_y = image_points[5][1]
 
     dist = abs(right_mouth_corner_y - chin_y)
     return dist
-
-def handle_vlc(vlc_instance, stop_idle):
-
-    if vlc_instance.is_playing() == 0:      
-    
-        if not stop_idle:
-            media = vlc.Media("datensammeln/tap_loop_start0900-1050.mp4")
-            vlc_instance.set_media(media)
-            vlc_instance.play()
-            print("start idle")
-            print(stop_idle)
-
-        else:
-            if not stop_tap:
-                print("**tapping sounds**")
-
-
-
-def playTap(tap_num, vlc_instance):
-    global curr_num, stop_tap
-    
-    media = vlc.Media("datensammeln/tap_loop_start0001-0059.mp4")
-    
-    vlc_instance.set_media(media)
-    vlc_instance.play()
-    time.sleep(0.2)
-    while True:
-        if vlc_instance.is_playing() == 0:
-            break
-
-    curr_num = 1
-
-    media = vlc.Media("datensammeln/tap_loop_start0060-0088.mp4")
-    
-    for i in range(tap_num-1):
-        vlc_instance.set_media(media)
-        vlc_instance.play()
-
-        time.sleep(0.2)
-        while True:
-            if vlc_instance.is_playing() == 0:
-                break
-        curr_num = i + 1
-        if stop_tap:
-            break
-    
-    
-    media = vlc.Media("datensammeln/tap_loop_start0118-0139.mp4")
-    vlc_instance.set_media(media)
-    vlc_instance.play()
-    time.sleep(0.2)
-    while True:
-        if vlc_instance.is_playing() == 0:
-            break
-    #set curr_num to stop recording
-    curr_num = -1
-
-    media = vlc.Media("datensammeln/tap_loop_start0900-1050.mp4")
-    vlc_instance.set_media(media)
-    vlc_instance.play()
-def to_df_and_window(image_points,tap_num, window_size, move_by):
-    global df 
-    ##append image_points to continouus data stream
-    image_points 
-    ##data in window füllen -> df nach if erzeugen -> data leeren 
-    if len() >= tap_num * window_size + move_by:
-        window = get_window_from_df(df,tap_num,window_size,move_by)
-
-        print (window)
-    
-def get_window_from_df(df, tap_num, window_size, move_by):
-    ##get window from current df
-    #define delimeter 
-    start_del = tap_num  * window_size + move_by
-    end_del = tap_num * window_size + move_by
-
-    #fill temp arr and append to target_class_array
-    window_arr = df[start_del : end_del]
-    return window_arr
 
 if __name__ == "__main__":
     main()
