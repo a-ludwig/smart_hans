@@ -30,16 +30,16 @@ def get_face_detector(modelFile=None,
     """
     if quantized:
         if modelFile == None:
-            modelFile = "headpose_opencv/models/opencv_face_detector_uint8.pb"
+            modelFile = "Machine_learning/headpose_opencv/models/opencv_face_detector_uint8.pb"
         if configFile == None:
-            configFile = "headpose_opencv/models/opencv_face_detector.pbtxt"
+            configFile = "Machine_learning/headpose_opencv/models/opencv_face_detector.pbtxt"
         model = cv2.dnn.readNetFromTensorflow(modelFile, configFile)
         
     else:
         if modelFile == None:
-            modelFile = "headpose_opencv/models/res10_300x300_ssd_iter_140000.caffemodel"
+            modelFile = "Machine_learning/headpose_opencv/models/res10_300x300_ssd_iter_140000.caffemodel"
         if configFile == None:
-            configFile = "headpose_opencv/models/deploy.prototxt"
+            configFile = "Machine_learning/headpose_opencv/models/deploy.prototxt"
         model = cv2.dnn.readNetFromCaffe(configFile, modelFile)
     return model
 
