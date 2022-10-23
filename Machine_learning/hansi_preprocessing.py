@@ -13,8 +13,8 @@ import math
 import os
 import sys
 from sklearn.model_selection import StratifiedShuffleSplit
-from face_detector import get_face_detector, find_faces
-from face_landmarks import get_landmark_model, detect_marks
+from headpose_opencv.face_detector import get_face_detector, find_faces
+from headpose_opencv.face_landmarks import get_landmark_model, detect_marks
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
