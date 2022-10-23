@@ -13,8 +13,8 @@ import pathlib
 temp = pathlib.PosixPath
 pathlib.PosixPath = pathlib.WindowsPath
 
-from headpose_opencv.face_detector import get_face_detector, find_faces
-from headpose_opencv.face_landmarks import get_landmark_model, detect_marks
+from Machine_learning.headpose_opencv.face_detector import get_face_detector, find_faces
+from Machine_learning.headpose_opencv.face_landmarks import get_landmark_model, detect_marks
 from Machine_learning.datenverarbeitung.dataloader import dataloader
 from utils.horse import horse
 import pandas as pd
