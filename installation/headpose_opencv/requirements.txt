@@ -1,4 +1,0 @@
-pandas
-stumpy
-numpy
-matplotlib
