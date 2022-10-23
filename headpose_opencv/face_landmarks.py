@@ -11,7 +11,7 @@ import tensorflow as tf
 from tensorflow import keras
 
 
-def get_landmark_model(saved_model='models/pose_model'):
+def get_landmark_model(saved_model='headpose_opencv/models/pose_model'):
     """
     Get the facial landmark model. 
     Original repository: https://github.com/yinguobing/cnn-facial-landmark
@@ -107,22 +107,27 @@ def detect_marks(img, model, face):
     
     face_img = img[facebox[1]: facebox[3],
                      facebox[0]: facebox[2]]
-    face_img = cv2.resize(face_img, (128, 128))
-    face_img = cv2.cvtColor(face_img, cv2.COLOR_BGR2RGB)
-    
-    # # Actual detection.
-    predictions = model.signatures["predict"](
-        tf.constant([face_img], dtype=tf.uint8))
 
-    # Convert predictions to landmarks.
-    marks = np.array(predictions['output']).flatten()[:136]
-    marks = np.reshape(marks, (-1, 2))
+                     ## very fast movements cause error in resize
+    if len(face_img) > 0:
+        face_img = cv2.resize(face_img, (128, 128), )
+        face_img = cv2.cvtColor(face_img, cv2.COLOR_BGR2RGB)
     
-    marks *= (facebox[2] - facebox[0])
-    marks[:, 0] += facebox[0]
-    marks[:, 1] += facebox[1]
-    marks = marks.astype(np.uint)
+        # # Actual detection.
+        predictions = model.signatures["predict"](
+            tf.constant([face_img], dtype=tf.uint8))
 
+        # Convert predictions to landmarks.
+        marks = np.array(predictions['output']).flatten()[:136]
+        marks = np.reshape(marks, (-1, 2))
+        
+        marks *= (facebox[2] - facebox[0])
+        marks[:, 0] += facebox[0]
+        marks[:, 1] += facebox[1]
+        marks = marks.astype(np.uint)
+    else:
+        print("catching empty face_img")
+        marks = np.ones((68,2),np.uint)
     return marks
 
 def draw_marks(image, marks, color=(0, 255, 0)):
