@@ -23,7 +23,7 @@ import numpy as np
 
 from tsai.all import *
 
-rot_angle = 90
+rot_angle = 0
 debug = True
 found_face = False
 stop_idle = False
@@ -166,7 +166,6 @@ def main():
 
     hansi = horse() ##hansi is our magnificent horse 
 
-    #cap = cv2.VideoCapture(0)
     cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
     ret, img = cap.read()
     rot_M, cam_M = get_camera_matrixes(img, rot_angle)
@@ -209,24 +208,24 @@ def main():
 
                 dist = get_face_dist(image_points)
 
-                if hansi.switch == "tapping" and hansi.curr_tap >= 1:
+                if hansi.switch == "tapping" and hansi.curr_tap >= 2:
                     data.append(all_points)
-                    curr_win_size += 1
+                    hansi.curr_win_size += 1
                     
-                    delim = (len(data) + dl.move_window_by) if dl.move_window_by >=0 else len(data) 
-
+                    delim = hansi.curr_win_size ###movy_by only negative, otherwise: (len(data) + dl.move_window_by) if dl.move_window_by >=0 else len(data) 
+                    print(delim)
                     #######
                     #Make prediction  n times per cycle(tap)
                     #######
                     
-                    if delim % (cycle_size/n) == 0 and hansi.curr_tap >= 3: 
+                    if delim % (cycle_size) == 0: #delim % (cycle_size/n) == 0 and hansi.curr_tap >= 3: 
 
                         print(f"im predicting at calc_tap:{float(delim/cycle_size)}")
-                        print(delim)
-                        
+                        #print(delim)
+                        print("***tap***")
                         window_scaled, min, max = list_to_norm_win(dl, data, min, max)
                         predicted_class = make_pred(window_scaled, predictor, threshold=0.66, class_to_look_at=1)
-                        print(f"predicted class: {predicted_class}")
+                        #print(f"predicted class: {predicted_class}")
                         if predicted_class == 1:
                             hansi.switch = "end_tap"
                             hansi.save = True
@@ -271,7 +270,7 @@ def main():
             #if hans.switch == "end_tap":
                 
             ##############
-            cv2.imshow('img', img)
+            #cv2.imshow('img', img)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
         else:
@@ -303,7 +302,7 @@ def make_pred( window_scaled,predictor, threshold, class_to_look_at):
     probabilities_class, _, predicted_class = predictor.get_X_preds(X, with_decoded=True)
     
     predictor_probas_np = probabilities_class.numpy()[0]
-    print(probabilities_class)
+    #print(probabilities_class)
     class_predicted = None
     temp = 0
     for i, elem in enumerate(predictor_probas_np):

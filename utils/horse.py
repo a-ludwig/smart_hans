@@ -9,6 +9,7 @@ class horse:
 
         self.max_tap = 12
         self.curr_tap = 0
+        self.curr_win_size = 0
 
 
 
@@ -29,10 +30,11 @@ class horse:
                 case "start_tap":
                     media = vlc.Media("datensammeln/tap_loop_start0001-0059.mp4")
                     self.switch = "tapping"
-                    self.curr_tap = 1
+                    self.curr_tap = 2
                 case "tapping":
                     print(f"**TAP**  {self.curr_tap}")
                     self.curr_tap += 1
+                    self.curr_win_size = 0
                     media = vlc.Media("datensammeln/tap_loop_start0060-0088.mp4")
                     if self.curr_tap == self.max_tap:
                         self.switch = "end_tap"
