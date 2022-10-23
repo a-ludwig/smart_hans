@@ -172,9 +172,9 @@ class VideoStreamWidget(object): ###https://stackoverflow.com/questions/54933801
 def main():
     
     nr_taps = 1
-    tap_size = 35
+    tap_size = 30
     window_size = tap_size * nr_taps
-    move_by = 0
+    move_by = -2
 
     cycle_size = 28
     n = 2 ### cycle/n for modulo
@@ -196,7 +196,7 @@ def main():
 
     
 
-    dl = dataloader(scenario = 3, nr_taps = nr_taps, tap_size = tap_size, move_window_by = move_by, feature_list = ['right_eye_corner_x'] )
+    dl = dataloader(scenario = 3, nr_taps = nr_taps, tap_size = tap_size, move_window_by = move_by, feature_list = ['chin_y'] )
     num_params = len(dl.column_dict)-1
     
     timer_in_sec, last_t, data = init_params(num_params)
@@ -237,20 +237,20 @@ def main():
                     data.append(all_points)
                     hansi.curr_win_size += 1
                     
-                    delim = hansi.curr_win_size ###movy_by only negative, otherwise: (len(data) + dl.move_window_by) if dl.move_window_by >=0 else len(data) 
+                    delim = hansi.curr_win_size-move_by ###movy_by only negative, otherwise: (len(data) + dl.move_window_by) if dl.move_window_by >=0 else len(data) 
                     print(delim)
                     #######
                     #Make prediction  n times per cycle(tap)
                     #######
-                    
+                    #print(hansi.curr_tap)
                     if delim % (cycle_size) == 0: #delim % (cycle_size/n) == 0 and hansi.curr_tap >= 3: 
 
                         print(f"im predicting at calc_tap:{float(delim/cycle_size)}")
                         #print(delim)
                         print("***tap***")
                         window_scaled, min, max = list_to_norm_win(dl, data, min, max)
-                        predicted_class = make_pred(window_scaled, predictor, threshold=0.66, class_to_look_at=1)
-                        #print(f"predicted class: {predicted_class}")
+                        predicted_class = make_pred(window_scaled, predictor, threshold=0.6, class_to_look_at=1)
+                        print(f"predicted class: {predicted_class}")
                         if predicted_class == 1:
                             hansi.switch = "end_tap"
                             hansi.save = True
@@ -319,7 +319,7 @@ def make_pred( window_scaled,predictor, threshold, class_to_look_at):
     probabilities_class, _, predicted_class = predictor.get_X_preds(X, with_decoded=True)
     
     predictor_probas_np = probabilities_class.numpy()[0]
-    #print(probabilities_class)
+    print(probabilities_class)
     class_predicted = None
     temp = 0
     for i, elem in enumerate(predictor_probas_np):
