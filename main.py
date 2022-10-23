@@ -22,6 +22,7 @@ import numpy as np
 
 
 from tsai.all import *
+from threading import Thread
 
 rot_angle = 0
 debug = True
@@ -144,7 +145,29 @@ def head_pose_points(img, rotation_vector, translation_vector, camera_matrix):
     x = point_2d[2]
     
     return (x, y)
+class VideoStreamWidget(object): ###https://stackoverflow.com/questions/54933801/how-to-increase-performance-of-opencv-cv2-videocapture0-read#55131847
+    def __init__(self, src=0):
+        self.capture = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+        # Start the thread to read frames from the video stream
+        self.thread = Thread(target=self.update, args=())
+        self.thread.daemon = True
+        self.thread.start()
 
+    def update(self):
+        # Read the next frame from the stream in a different thread
+        while True:
+            if self.capture.isOpened():
+                (self.status, self.frame) = self.capture.read()
+            time.sleep(.01)
+
+    def show_frame(self):
+        # Display frames in main program
+        cv2.imshow('frame', self.frame)
+        key = cv2.waitKey(1)
+        if key == ord('q'):
+            self.capture.release()
+            cv2.destroyAllWindows()
+            exit(1)
 
 def main():
     
@@ -167,6 +190,7 @@ def main():
     hansi = horse() ##hansi is our magnificent horse 
 
     cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+    cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
     ret, img = cap.read()
     rot_M, cam_M = get_camera_matrixes(img, rot_angle)
 
@@ -192,12 +216,13 @@ def main():
     dist = 0
     curr_win_size = 0
     # dl.window_size = 28
-
-    ## Gameloop - 30FPS repeating execution loop
+    video_stream_widget = VideoStreamWidget()
     while True:
-        ret, img = cap.read()
-        fps = FPS().start()
-        if ret == True:
+        try:
+            #video_stream_widget.show_frame()
+            img = video_stream_widget.frame
+            fps = FPS().start()
+
             img = cv2.warpAffine(img, rot_M, (img.shape[1], img.shape[0]))## rot image
             hansi.queue()## keep hansi alive
 
@@ -267,17 +292,93 @@ def main():
             cv2.putText(img, str(dist), [180,100], font, 2, color, 3)
             cv2.putText(img, str(int(fps.fps())), [100,200], font, 2, (0,0,255), 3)
 
-            #if hans.switch == "end_tap":
+        except AttributeError:
+            pass
+    ## Gameloop - 30FPS repeating execution loop
+    # while True:
+    #     ret, img = cap.read()
+    #     fps = FPS().start()
+    #     if ret == True:
+    #         img = cv2.warpAffine(img, rot_M, (img.shape[1], img.shape[0]))## rot image
+    #         hansi.queue()## keep hansi alive
+
+    #         faces, face_found = find_face(img, face_model)
+            
+    #         if face_found:
+    #             img, image_points, all_points = estimate_head_pose(img, model_points, cam_M, face_model, landmark_model, faces)
+
+    #             dist = get_face_dist(image_points)
+
+    #             if hansi.switch == "tapping" and hansi.curr_tap >= 2:
+    #                 data.append(all_points)
+    #                 hansi.curr_win_size += 1
+                    
+    #                 delim = hansi.curr_win_size ###movy_by only negative, otherwise: (len(data) + dl.move_window_by) if dl.move_window_by >=0 else len(data) 
+    #                 print(delim)
+    #                 #######
+    #                 #Make prediction  n times per cycle(tap)
+    #                 #######
+                    
+    #                 if delim % (cycle_size) == 0: #delim % (cycle_size/n) == 0 and hansi.curr_tap >= 3: 
+
+    #                     print(f"im predicting at calc_tap:{float(delim/cycle_size)}")
+    #                     #print(delim)
+    #                     print("***tap***")
+    #                     window_scaled, min, max = list_to_norm_win(dl, data, min, max)
+    #                     predicted_class = make_pred(window_scaled, predictor, threshold=0.66, class_to_look_at=1)
+    #                     #print(f"predicted class: {predicted_class}")
+    #                     if predicted_class == 1:
+    #                         hansi.switch = "end_tap"
+    #                         hansi.save = True
+
+    #                         #### reset for new participant
+
+    #         else:
+    #             hansi.switch = "idle"
+    #             dist = 0
+    #             curr_win_size = 0
+            
+
+    #         timer_in_sec, last_t = wait_for_face(timer_in_sec, last_t, dist)
+
+    #         if int(timer_in_sec) == 5 and hansi.switch == "idle":
+    #             hansi.switch = "start_tap"
+    #         elif timer_in_sec < 5 and hansi.switch == "tapping": 
+    #             hansi.switch = "end_tap"
+
+    #         if hansi.switch == "reset_idle":
+    #             if hansi.save == True:
+    #                 df2 = pd.DataFrame(data)
+    #                 now = archi.now()
+    #                 date_time = now.strftime("%m%d%Y_%H%M%S")
+
+    #                 df2.to_csv(f"installation_export/inst_exp_{date_time}.csv")
+    #                 hansi.save = False
+    #             timer_in_sec, last_t, data = init_params(num_params)
+
+            
+    #         # update the FPS counter
+    #         fps.update()
+    #         fps.stop()
+
+
+    #         color = (0,255,0) if stop_idle else (255,0,0)
+
+    #         cv2.putText(img, str(int(timer_in_sec)), [100,100], font, 2, color, 3)
+    #         cv2.putText(img, str(dist), [180,100], font, 2, color, 3)
+    #         cv2.putText(img, str(int(fps.fps())), [100,200], font, 2, (0,0,255), 3)
+
+    #         #if hans.switch == "end_tap":
                 
-            ##############
-            #cv2.imshow('img', img)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
-        else:
-            break
-    cv2.destroyAllWindows()
-    cap.release()
-    return
+    #         ##############
+    #         #cv2.imshow('img', img)
+    #         if cv2.waitKey(1) & 0xFF == ord('q'):
+    #             break
+    #     else:
+    #         break
+    # cv2.destroyAllWindows()
+    # cap.release()
+    # return
 
 def init_params(num_params):
     data = []
