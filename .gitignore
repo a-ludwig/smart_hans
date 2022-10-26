@@ -3,6 +3,7 @@ headpose_opencv/recorded_data/
 datensammeln/videos
 Machine_learning/models
 Machine_learning/vis/plots
+installation_export
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
