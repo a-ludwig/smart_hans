@@ -24,7 +24,7 @@ import numpy as np
 from tsai.all import *
 from threading import Thread
 
-rot_angle = 0
+rot_angle = 270
 debug = True
 found_face = False
 stop_idle = False
@@ -174,9 +174,10 @@ def main():
     nr_taps = 1
     tap_size = 30
     window_size = tap_size * nr_taps
-    move_by = -2
+    move_by = -12
+    prediction_threshold = 0.571
 
-    cycle_size = 28
+    cycle_size = 23
     n = 2 ### cycle/n for modulo
 
     min = 0
@@ -232,28 +233,29 @@ def main():
                 img, image_points, all_points = estimate_head_pose(img, model_points, cam_M, face_model, landmark_model, faces)
 
                 dist = get_face_dist(image_points)
-
+                #print(f"hansi curr tap: {hansi.curr_tap}")
                 if hansi.switch == "tapping" and hansi.curr_tap >= 2:
                     data.append(all_points)
                     hansi.curr_win_size += 1
                     
-                    delim = hansi.curr_win_size-move_by ###movy_by only negative, otherwise: (len(data) + dl.move_window_by) if dl.move_window_by >=0 else len(data) 
-                    print(delim)
+                    delim = hansi.curr_win_size ##+move_by ###movy_by only negative, otherwise: (len(data) + dl.move_window_by) if dl.move_window_by >=0 else len(data) 
+                    #print(delim)
                     #######
                     #Make prediction  n times per cycle(tap)
                     #######
                     #print(hansi.curr_tap)
-                    if delim % (cycle_size) == 0: #delim % (cycle_size/n) == 0 and hansi.curr_tap >= 3: 
+                    if (delim % (cycle_size+move_by) == 0)and hansi.curr_tap >= 3: #delim % (cycle_size/n) == 0 and hansi.curr_tap >= 3: 
 
-                        print(f"im predicting at calc_tap:{float(delim/cycle_size)}")
+                        print(f"im predicting at calc_tap:{hansi.curr_tap}")
                         #print(delim)
-                        print("***tap***")
+                        #print("***predicting***")
                         window_scaled, min, max = list_to_norm_win(dl, data, min, max)
-                        predicted_class = make_pred(window_scaled, predictor, threshold=0.6, class_to_look_at=1)
-                        print(f"predicted class: {predicted_class}")
+                        predicted_class = make_pred(window_scaled, predictor, threshold=prediction_threshold, class_to_look_at=1)
+                        #print(f"predicted class: {predicted_class}")
                         if predicted_class == 1:
                             hansi.switch = "end_tap"
                             hansi.save = True
+                            
 
                             #### reset for new participant
 
@@ -313,19 +315,19 @@ def make_pred( window_scaled,predictor, threshold, class_to_look_at):
     X = np.array([X])
     X = np.array([X])
     
-    #print(X)
+    print(X)
     ##Inference on Window
     #
-    probabilities_class, _, predicted_class = predictor.get_X_preds(X, with_decoded=True)
+    probabilities_class, _, predicted_class = predictor.get_X_preds(X)
     
     predictor_probas_np = probabilities_class.numpy()[0]
     print(probabilities_class)
     class_predicted = None
     temp = 0
-    for i, elem in enumerate(predictor_probas_np):
-                        if elem >= threshold and elem >= temp:
-                            class_predicted = i
-                            temp = elem
+    # for i, elem in enumerate(predictor_probas_np):
+    #                     if elem >= threshold and elem >= temp:
+    #                         class_predicted = i
+    #                         temp = elem
                             #print(elem)
     if predictor_probas_np[class_to_look_at] > threshold:
         class_predicted = class_to_look_at
@@ -335,7 +337,7 @@ def make_pred( window_scaled,predictor, threshold, class_to_look_at):
 
 def list_to_norm_win(dl, data, min, max):
     ##
-    delim = -dl.window_size - dl.move_window_by if dl.move_window_by < 0 else -dl.window_size
+    delim = -dl.window_size #- dl.move_window_by if dl.move_window_by < 0 else -dl.window_size
     window_arr = np.array(data[delim:])
     
     ##work around, actually only one feature
@@ -345,20 +347,18 @@ def list_to_norm_win(dl, data, min, max):
 
     ##########
     ###Normalization right here instead of dl
-    temp_max = np.amax(window_arr)
-    temp_min = np.amin(window_arr)
-    if temp_max > max:
-        max = temp_max
-    if temp_min < min:
-        min = temp_min
+    temp_max = np.amax(window_arr_for_norm)
+    temp_min = np.amin(window_arr_for_norm)
     divisor = temp_max - temp_min#max-min
+    sub_arr = np.array([temp_min] * len(window_arr_for_norm))
 
     if divisor == 0 :
        
         print("dropping frame")
         divisor = 0.5
     
-    window_scaled = (window_arr_for_norm - min )/ divisor
+    window_scaled = (window_arr_for_norm - temp_min)/ divisor
+    
     return window_scaled, min, max
 
 def get_camera_matrixes(img, rot_angle,):

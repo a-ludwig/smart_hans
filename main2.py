@@ -224,7 +224,7 @@ def main():
                         #print(delim)
                         print("***tap***")
                         window_scaled, min, max = list_to_norm_win(dl, data, min, max)
-                        predicted_class = make_pred(window_scaled, predictor, threshold=0.59, class_to_look_at=1)
+                        predicted_class = make_pred(window_scaled, predictor, threshold=0.582, class_to_look_at=1)
                         #print(f"predicted class: {predicted_class}")
                         if predicted_class == 1:
                             hansi.switch = "end_tap"

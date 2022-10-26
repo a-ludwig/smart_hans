@@ -7,7 +7,7 @@ class horse:
         self.instance = self.init_instance()
         self.save = False
 
-        self.max_tap = 12
+        self.max_tap = 11
         self.curr_tap = 0
         self.curr_win_size = 0
 
@@ -25,12 +25,12 @@ class horse:
             match self.switch:
                 
                 case "idle":
-                    media = vlc.Media("datensammeln/looking_around.mp4")
+                    media = vlc.Media("datensammeln/idle_small_frame0900-1353.mp4")
                     print("idleing")
                 case "start_tap":
                     media = vlc.Media("datensammeln/tap_loop_start0001-0059.mp4")
                     self.switch = "tapping"
-                    self.curr_tap = 2
+                    self.curr_tap = 0
                 case "tapping":
                     print(f"**TAP**  {self.curr_tap}")
                     self.curr_tap += 1
@@ -45,7 +45,7 @@ class horse:
                     media = vlc.Media("datensammeln/tap_loop_start0900-1050.mp4")
                     self.switch = "reset_idle" 
                 case "reset_idle":
-                    media = media = vlc.Media("datensammeln/looking_around.mp4")
+                    media = vlc.Media("datensammeln/idle_small_frame0900-1353.mp4")
                     self.switch = "idle"
             self.instance.set_media(media)
             self.instance.play()
