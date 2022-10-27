@@ -25,7 +25,7 @@ class horse:
             match self.switch:
                 
                 case "idle":
-                    media = vlc.Media("datensammeln/idle_small_frame0900-1353.mp4")
+                    media = vlc.Media("datensammeln/looking_around_small_frame_einskuerzer.mp4")
                     print("idleing")
                 case "start_tap":
                     media = vlc.Media("datensammeln/tap_loop_start0001-0059.mp4")
@@ -45,7 +45,7 @@ class horse:
                     media = vlc.Media("datensammeln/tap_loop_start0900-1050.mp4")
                     self.switch = "reset_idle" 
                 case "reset_idle":
-                    media = vlc.Media("datensammeln/idle_small_frame0900-1353.mp4")
+                    media = vlc.Media("datensammeln/looking_around_small_frame_einskuerzer.mp4")
                     self.switch = "idle"
             self.instance.set_media(media)
             self.instance.play()
