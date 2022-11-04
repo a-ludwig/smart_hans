@@ -9,9 +9,9 @@ import os
 
 from imutils.video import FPS
 
-import pathlib
-temp = pathlib.PosixPath
-pathlib.PosixPath = pathlib.WindowsPath
+# import pathlib
+# temp = pathlib.PosixPath
+# pathlib.PosixPath = pathlib.WindowsPath
 
 from Machine_learning.headpose_opencv.face_detector import get_face_detector, find_faces
 from Machine_learning.headpose_opencv.face_landmarks import get_landmark_model, detect_marks
@@ -31,6 +31,11 @@ stop_idle = False
 stop_tap = False
 curr_num = 1
 df = pd.DataFrame()
+
+##threshold for distance detection
+thresh = 35
+##waiting time for Hansi to Start in Secs
+waiting_time = 5
 
 
 def get_2d_points(img, rotation_vector, translation_vector, camera_matrix, val):
@@ -265,11 +270,11 @@ def main():
                 curr_win_size = 0
             
 
-            timer_in_sec, last_t = wait_for_face(timer_in_sec, last_t, dist)
+            timer_in_sec, last_t = wait_for_face(timer_in_sec, last_t, dist, thresh)
 
-            if int(timer_in_sec) == 5 and hansi.switch == "idle":
+            if int(timer_in_sec) == waiting_time and hansi.switch == "idle":
                 hansi.switch = "start_tap"
-            elif timer_in_sec < 5 and hansi.switch == "tapping": 
+            elif timer_in_sec < waiting_time and hansi.switch == "tapping": 
                 hansi.switch = "end_tap"
 
             if hansi.switch == "reset_idle":
@@ -378,9 +383,9 @@ def get_camera_matrixes(img, rot_angle,):
     return M, camera_matrix
 
 
-def wait_for_face(timer_in_sec, last_t, dist):
+def wait_for_face(timer_in_sec, last_t, dist, thresh):
     #global found_face, stop_idle
-    thresh = 35
+    thresh = thresh
 
     # detection loop
     now = time.time() # in seconds 
