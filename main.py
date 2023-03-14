@@ -24,7 +24,7 @@ import numpy as np
 from tsai.all import *
 from threading import Thread
 
-rot_angle = 270
+rot_angle = 0 #270
 debug = True
 found_face = False
 stop_idle = False
@@ -299,9 +299,15 @@ def main():
             cv2.putText(img, str(dist), [180,100], font, 2, color, 3)
             cv2.putText(img, str(int(fps.fps())), [100,200], font, 2, (0,0,255), 3)
 
+
+            cv2.imshow('img', img)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+
         except AttributeError:
             pass
-
+    cv2.destroyAllWindows()
+    cap.release()
 
 def init_params(num_params):
     data = []
