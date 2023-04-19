@@ -260,7 +260,6 @@ def main():
                         if predicted_class == 1:
                             hansi.switch = "end_tap"
                             hansi.save = True
-                            hansi.pred_tap  = hansi.curr_tap
                             
 
                             #### reset for new participant
@@ -268,7 +267,7 @@ def main():
             else:
                 hansi.switch = "idle"
                 dist = 0
-                hansi.curr_win_size = 0
+                curr_win_size = 0
             
 
             timer_in_sec, last_t = wait_for_face(timer_in_sec, last_t, dist, thresh)
@@ -284,13 +283,7 @@ def main():
                     now = archi.now()
                     date_time = now.strftime("%m%d%Y_%H%M%S")
 
-
-                    ## new export with labeled data:
-                    ## add "WindowOfInterest_tapnumber" to end of filename
-                    filename = f"installation_export/inst_exp_{date_time}_{hansi.target_frame[0]}-{hansi.target_frame[-1]}_.csv"
-                    df2.to_csv(filename)
-
-                    
+                    df2.to_csv(f"installation_export/inst_exp_{date_time}.csv")
                     hansi.save = False
                 timer_in_sec, last_t, data = init_params(num_params)
 
