@@ -5,6 +5,8 @@ import os
 from threading import Thread
 import math
 
+import socket
+
 from Machine_learning.headpose_opencv.face_detector import get_face_detector, find_faces
 from Machine_learning.headpose_opencv.face_landmarks import get_landmark_model, detect_marks
 
@@ -273,3 +275,27 @@ class VideoStreamWidget(object): ###https://stackoverflow.com/questions/54933801
             self.capture.release()
             cv2.destroyAllWindows()
             exit(1)
+
+
+def connect_socket(ip, port):
+    # Create a socket object
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    # Connect to the Raspberry Pi
+    s.connect((ip, port))
+    return s 
+
+def get_feedback(socket, number):
+    # Send a number to the Raspberry Pi
+    socket.sendall(str(number).encode())
+
+    # Receive the response from the Raspberry Pi
+    response = socket.recv(1024).decode()
+    result = response
+
+    # Close the socket
+    socket.close()
+
+    # Print the result
+    print(f"The boolean value is {result}")
+    return result
