@@ -37,7 +37,10 @@ thresh = 35
 ##waiting time for Hansi to Start in Secs
 waiting_time = 5
 
-
+## Socket connection:
+# Define the IP address and port of the Raspberry Pi
+IP_ADDRESS = '192.168.1.195'  # Replace with the IP address of your Raspberry Pi
+PORT = 1234
 
 def main():
     
@@ -49,6 +52,8 @@ def main():
 
     cycle_size = 23
     n = 2 ### cycle/n for modulo
+
+    
 
     min = 0
     max = 0
@@ -146,13 +151,18 @@ def main():
                     now = archi.now()
                     date_time = now.strftime("%m%d%Y_%H%M%S")
 
+                    pi_socket = connect_socket(IP_ADDRESS, PORT)
+                    feedback = get_feedback(pi_socket, hansi.pred_tap)
 
+                    if feedback == 'True':
+                        filename = f"installation_export/inst_exp_{date_time}_tap{hansi.pred_tap}.csv"
+                        df2.to_csv(filename)    
                     ## new export with labeled data:
                     ## add "WindowOfInterest_tapnumber" to end of filename
                     #filename = f"installation_export/inst_exp_{date_time}_{hansi.target_frame[0]}-{hansi.target_frame[-1]}_.csv"
                     #df2.to_csv(filename)
 
-                    df2.to_csv(f"installation_export/inst_exp_{date_time}.csv")
+                    #df2.to_csv(f"installation_export/inst_exp_{date_time}.csv")
 
                     hansi.save = False
                 timer_in_sec, last_t, data = init_params(num_params)
