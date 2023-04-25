@@ -10,6 +10,8 @@ class horse:
         self.max_tap = 11
         self.curr_tap = 0
         self.curr_win_size = 0
+        self.target_frame = []
+        self.pred_tap = 0
 
 
 
