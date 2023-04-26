@@ -5,8 +5,8 @@ from utils.button import Button
 from gpiozero import LEDCharDisplay, LEDMultiCharDisplay
 
 def main():
-    b_rigth = Button()
-    b_false = Button()
+    b_rigth = Button(label = 'right')
+    b_false = Button(label = 'false')
 
     char = LEDCharDisplay(26, 19, 13, 6, 5, 22, 4, dp=23, active_high=False)
     #declared the GPIO pins for (a,b,c,d,e,f,g) and declared its CAS
@@ -16,6 +16,7 @@ def main():
 
     setup_gpio()
     setup_button(15, button_callback, b_rigth)
+    setup_button(17, button_callback, b_false)
 
     # Define the IP address and port to listen on
     IP_ADDRESS = '0.0.0.0'  # Listen on all available interfaces
@@ -42,7 +43,7 @@ def main():
         number = int(data)
         display.value = (str(number))
         print("waiting")
-        time.sleep(5)
+        time.sleep(10)
         display.value = ('')
         print("response")
         # Process the number and generate a boolean value
@@ -69,7 +70,10 @@ def setup_button(pin_number, callback_function, button):
 
 def button_callback(channel, button):
     button.pushed = True
-    print("Button was pushed!")
+    if button.label == 'right':
+        print("rigth was pushed!")
+    elif button.label == 'false':
+        print("false was pushed!")
 
 if __name__ == "__main__":
     main()
