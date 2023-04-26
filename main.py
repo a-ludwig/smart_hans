@@ -62,7 +62,7 @@ def main():
     #load hp model
     face_model, landmark_model = init_hp_model()
 
-    hansi = horse() ##hansi is our magnificent horse 
+    hansi = horse(max_taps=12) ##hansi is our magnificent horse 
 
     cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
     cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
