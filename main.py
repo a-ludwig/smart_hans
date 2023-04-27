@@ -33,9 +33,9 @@ curr_num = 1
 df = pd.DataFrame()
 
 ##threshold for distance detection
-thresh = 35
+DIST_THRESH = 35
 ##waiting time for Hansi to Start in Secs
-waiting_time = 5
+WAITING_TIME = 5
 
 ## Socket connection:
 # Define the IP address and port of the Raspberry Pi
@@ -103,7 +103,11 @@ def main():
 
             faces, face_found = find_face(img, face_model)
             
-            if face_found:
+            if not face_found:
+                hansi.switch = "idle"
+                dist = 0 ##resets the timer
+                hansi.curr_win_size = 0
+            else:
                 img, image_points, all_points = estimate_head_pose(img, model_points, cam_M, face_model, landmark_model, faces)
 
                 dist = get_face_dist(image_points)
@@ -131,18 +135,14 @@ def main():
                             
 
                             #### reset for new participant
-
-            else:
-                hansi.switch = "idle"
-                dist = 0
-                hansi.curr_win_size = 0
+                
             
 
-            timer_in_sec, last_t = wait_for_face(timer_in_sec, last_t, dist, thresh)
+            timer_in_sec, last_t = wait_for_face(timer_in_sec, last_t, dist, DIST_THRESH)
 
-            if int(timer_in_sec) == waiting_time and hansi.switch == "idle":
+            if int(timer_in_sec) == WAITING_TIME and hansi.switch == "idle":
                 hansi.switch = "start_tap"
-            elif timer_in_sec < waiting_time and hansi.switch == "tapping": 
+            elif timer_in_sec < WAITING_TIME and hansi.switch == "tapping": 
                 hansi.switch = "end_tap"
 
             if hansi.switch == "reset_idle":
@@ -150,7 +150,7 @@ def main():
                     df2 = pd.DataFrame(data)
                     now = archi.now()
                     date_time = now.strftime("%m%d%Y_%H%M%S")
-
+                    
                     pi_socket = connect_socket(IP_ADDRESS, PORT)
                     feedback = get_feedback(pi_socket, hansi.pred_tap)
 
