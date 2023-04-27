@@ -41,19 +41,30 @@ def main():
         # Receive the number from the client
         data = conn.recv(1024).decode()
         number = int(data)
+
+        # Send an immediate response to the client
+        response = "received"
+        conn.sendall(response.encode())
+
         display.value = (str(number))
-        print("waiting")
-        time.sleep(10)
-        display.value = ('')
-        print("response")
-        # Process the number and generate a boolean value
-        result = b_rigth.pushed
-        b_rigth.pushed = False  # Reset the pushed flag
-        print(result)
-        print(f"was the number:{number} correct?")
-        # Send the boolean value back to the client
-        response = str(result).encode()
-        conn.sendall(response)
+        result = False
+        print('waiting for button press')
+        while result == False:
+            if(b_rigth.pushed):
+                # Send the boolean value back to the client
+                response = str(True).encode()
+                conn.sendall(response)
+                result = True
+                b_rigth.pushed = False  # Reset the pushed flag
+
+            if(b_false.pushed):
+                # Send the boolean value back to the client
+                response = str(False).encode()
+                conn.sendall(response)
+                result = True
+                b_false.pushed = False  # Reset the pushed flag
+
+        display.value = ('00')
         
         # Close the connection
         conn.close()
