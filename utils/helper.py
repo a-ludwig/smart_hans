@@ -285,17 +285,48 @@ def connect_socket(ip, port):
     s.connect((ip, port))
     return s 
 
-def get_feedback(socket, number):
+def sent_number(socket, number):
     # Send a number to the Raspberry Pi
     socket.sendall(str(number).encode())
+    # Receive the acknowledgment from the Raspberry Pi
+    ack = socket.recv(1024).decode()
+    print(f"Received acknowledgment: {ack}") 
 
-    # Receive the response from the Raspberry Pi
-    response = socket.recv(1024).decode()
-    result = response
+def get_feedback(socket):
+    try:
+        # Receive the boolean value from the Raspberry Pi
+        response = socket.recv(1024).decode()
+        result = bool(response)
+
+        # Print the result
+        print(f"The boolean value is {result}")
+
+    except:
+        print("Timeout occurred while waiting for response from Raspberry Pi")
+        result = None
+
+    return result
+
+def send_rec_feedback(IP_ADDRESS, PORT, hansi, duration):
+    # Connect to the Raspberry Pi socket
+    pi_socket = connect_socket(IP_ADDRESS, PORT)
+
+    # Send the number to the Raspberry Pi
+    sent_number(pi_socket, hansi.pred_tap)
+
+    # Keep track of how long the while loop has been running
+    start_time = time.monotonic()
+    # Set a timeout of 5 seconds for the recv() call
+    pi_socket.settimeout(0.5)
+    feedback = None
+    while feedback == None and time.monotonic() - start_time < duration:
+        hansi.queue()  # keep Hansi alive
+        feedback = get_feedback(pi_socket)
+
+    # Print a message indicating how long the while loop ran for
+    print(f"The while loop ran for {time.monotonic() - start_time} seconds")
 
     # Close the socket
-    socket.close()
+    pi_socket.close()
 
-    # Print the result
-    print(f"The boolean value is {result}")
-    return result
+    return feedback

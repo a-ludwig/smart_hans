@@ -33,11 +33,14 @@ curr_num = 1
 df = pd.DataFrame()
 
 ##threshold for distance detection
-thresh = 35
+DIST_THRESH = 35
 ##waiting time for Hansi to Start in Secs
-waiting_time = 5
+WAITING_TIME = 5
 
-
+## Socket connection:
+# Define the IP address and port of the Raspberry Pi
+IP_ADDRESS = '192.168.1.195'  # Replace with the IP address of your Raspberry Pi
+PORT = 1234
 
 def main():
     
@@ -50,6 +53,8 @@ def main():
     cycle_size = 23
     n = 2 ### cycle/n for modulo
 
+    
+
     min = 0
     max = 0
     #load tsai model
@@ -57,7 +62,7 @@ def main():
     #load hp model
     face_model, landmark_model = init_hp_model()
 
-    hansi = horse() ##hansi is our magnificent horse 
+    hansi = horse(max_taps=12) ##hansi is our magnificent horse 
 
     cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
     cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
@@ -98,7 +103,11 @@ def main():
 
             faces, face_found = find_face(img, face_model)
             
-            if face_found:
+            if not face_found:
+                hansi.switch = "idle"
+                dist = 0 ##resets the timer
+                hansi.curr_win_size = 0
+            else:
                 img, image_points, all_points = estimate_head_pose(img, model_points, cam_M, face_model, landmark_model, faces)
 
                 dist = get_face_dist(image_points)
@@ -126,18 +135,14 @@ def main():
                             
 
                             #### reset for new participant
-
-            else:
-                hansi.switch = "idle"
-                dist = 0
-                hansi.curr_win_size = 0
+                
             
 
-            timer_in_sec, last_t = wait_for_face(timer_in_sec, last_t, dist, thresh)
+            timer_in_sec, last_t = wait_for_face(timer_in_sec, last_t, dist, DIST_THRESH)
 
-            if int(timer_in_sec) == waiting_time and hansi.switch == "idle":
+            if int(timer_in_sec) == WAITING_TIME and hansi.switch == "idle":
                 hansi.switch = "start_tap"
-            elif timer_in_sec < waiting_time and hansi.switch == "tapping": 
+            elif timer_in_sec < WAITING_TIME and hansi.switch == "tapping": 
                 hansi.switch = "end_tap"
 
             if hansi.switch == "reset_idle":
@@ -146,13 +151,18 @@ def main():
                     now = archi.now()
                     date_time = now.strftime("%m%d%Y_%H%M%S")
 
+                    feedback = send_rec_feedback(IP_ADDRESS, PORT, hansi, PI_RESPONSE_TIME)
+
+                    if feedback == True:
+                        filename = f"installation_export/inst_exp_{date_time}_tap{hansi.pred_tap}.csv"
+                        df2.to_csv(filename)
 
                     ## new export with labeled data:
                     ## add "WindowOfInterest_tapnumber" to end of filename
                     #filename = f"installation_export/inst_exp_{date_time}_{hansi.target_frame[0]}-{hansi.target_frame[-1]}_.csv"
                     #df2.to_csv(filename)
 
-                    df2.to_csv(f"installation_export/inst_exp_{date_time}.csv")
+                    #df2.to_csv(f"installation_export/inst_exp_{date_time}.csv")
 
                     hansi.save = False
                 timer_in_sec, last_t, data = init_params(num_params)

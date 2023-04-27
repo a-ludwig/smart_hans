@@ -2,12 +2,12 @@ import vlc
 
 
 class horse:
-    def __init__(self ):
+    def __init__(self, max_taps):
         self.switch = "idle"
         self.instance = self.init_instance()
         self.save = False
 
-        self.max_tap = 11
+        self.max_tap = max_taps
         self.curr_tap = 0
         self.curr_win_size = 0
         self.target_frame = []
@@ -32,7 +32,7 @@ class horse:
                 case "start_tap":
                     media = vlc.Media("datensammeln/tap_loop_start0001-0059.mp4")
                     self.switch = "tapping"
-                    self.curr_tap = 0
+                    self.curr_tap = 1
                 case "tapping":
                     print(f"**TAP**  {self.curr_tap}")
                     self.curr_tap += 1
