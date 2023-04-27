@@ -150,13 +150,13 @@ def main():
                     df2 = pd.DataFrame(data)
                     now = archi.now()
                     date_time = now.strftime("%m%d%Y_%H%M%S")
-                    
-                    pi_socket = connect_socket(IP_ADDRESS, PORT)
-                    feedback = get_feedback(pi_socket, hansi.pred_tap)
 
-                    if feedback == 'True':
+                    feedback = send_rec_feedback(IP_ADDRESS, PORT, hansi, PI_RESPONSE_TIME)
+
+                    if feedback == True:
                         filename = f"installation_export/inst_exp_{date_time}_tap{hansi.pred_tap}.csv"
-                        df2.to_csv(filename)    
+                        df2.to_csv(filename)
+
                     ## new export with labeled data:
                     ## add "WindowOfInterest_tapnumber" to end of filename
                     #filename = f"installation_export/inst_exp_{date_time}_{hansi.target_frame[0]}-{hansi.target_frame[-1]}_.csv"
