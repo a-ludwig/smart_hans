@@ -8,6 +8,11 @@ def main():
     b_rigth = Button(label = 'right')
     b_false = Button(label = 'false')
 
+    button_dict = { ## dictionary with buttons and corresponding response for the socket
+        b_right: True,
+        b_false: False
+    }   
+
     char = LEDCharDisplay(26, 19, 13, 6, 5, 22, 4, dp=23, active_high=False)
     #declared the GPIO pins for (a,b,c,d,e,f,g) and declared its CAS
 
@@ -50,19 +55,13 @@ def main():
         result = False
         print('waiting for button press')
         while result == False:
-            if(b_rigth.pushed):
-                # Send the boolean value back to the client
-                response = str(True).encode()
-                conn.sendall(response)
-                result = True
-                b_rigth.pushed = False  # Reset the pushed flag
-
-            if(b_false.pushed):
-                # Send the boolean value back to the client
-                response = str(False).encode()
-                conn.sendall(response)
-                result = True
-                b_false.pushed = False  # Reset the pushed flag
+            for button, value in button_dict.items():
+                if button.pushed:
+                    # Send the boolean value back to the client
+                    response = str(value).encode()
+                    conn.sendall(response)
+                    result = True
+                    button.pushed = False  # Reset the pushed flag            
 
         display.value = ('00')
         
