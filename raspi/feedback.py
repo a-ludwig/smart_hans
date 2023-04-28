@@ -5,8 +5,13 @@ from utils.button import Button
 from gpiozero import LEDCharDisplay, LEDMultiCharDisplay
 
 def main():
-    b_rigth = Button(label = 'right')
+    b_right = Button(label = 'right')
     b_false = Button(label = 'false')
+
+    button_dict = { ## dictionary with buttons and corresponding response for the socket
+        b_right: True,
+        b_false: False
+    }   
 
     char = LEDCharDisplay(26, 19, 13, 6, 5, 22, 4, dp=23, active_high=False)
     #declared the GPIO pins for (a,b,c,d,e,f,g) and declared its CAS
@@ -15,7 +20,7 @@ def main():
 
 
     setup_gpio()
-    setup_button(15, button_callback, b_rigth)
+    setup_button(15, button_callback, b_right)
     setup_button(17, button_callback, b_false)
 
     # Define the IP address and port to listen on
@@ -37,23 +42,40 @@ def main():
     while True:
         # Wait for a client to connect
         conn, addr = s.accept()
-        
+        conn.settimeout(0.1)
         # Receive the number from the client
         data = conn.recv(1024).decode()
         number = int(data)
+
+        # Send an immediate response to the client
+        response = "received"
+        conn.sendall(response.encode())
+
         display.value = (str(number))
-        print("waiting")
-        time.sleep(10)
-        display.value = ('')
-        print("response")
-        # Process the number and generate a boolean value
-        result = b_rigth.pushed
-        b_rigth.pushed = False  # Reset the pushed flag
-        print(result)
-        print(f"was the number:{number} correct?")
-        # Send the boolean value back to the client
-        response = str(result).encode()
-        conn.sendall(response)
+        result = False
+        for button, value in button_dict.items():
+            button.pushed = False  # Reset the pushed flag     
+        print('waiting for button press')
+        while result == False:
+            for button, value in button_dict.items():
+                if button.pushed:
+                    print('pushed in the loop')
+                    # Send the boolean value back to the client
+                    response = str(value).encode()
+                    conn.sendall(response)
+                    result = True
+                
+            # Check if the socket has been closed
+            try:
+                data = conn.recv(1024)
+            except:
+                if not data:
+                    print("client closed the socket")
+                    result = True
+            
+            
+                           
+        display.value = ('00')
         
         # Close the connection
         conn.close()
