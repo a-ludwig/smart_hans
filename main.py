@@ -36,6 +36,7 @@ df = pd.DataFrame()
 DIST_THRESH = 35
 ##waiting time for Hansi to Start in Secs
 WAITING_TIME = 5
+PI_RESPONSE_TIME = 7
 
 ## Socket connection:
 # Define the IP address and port of the Raspberry Pi
@@ -92,6 +93,8 @@ def main():
     curr_win_size = 0
     # dl.window_size = 28
     video_stream_widget = VideoStreamWidget()
+    fps_arr = np.array([])
+    rand_int = random.randint(3, 10)
     while True:
         try:
             #video_stream_widget.show_frame()
@@ -107,6 +110,8 @@ def main():
                 hansi.switch = "idle"
                 dist = 0 ##resets the timer
                 hansi.curr_win_size = 0
+                fps_arr = np.array([])
+                rand_int = random.randint(3, 10)
             else:
                 img, image_points, all_points = estimate_head_pose(img, model_points, cam_M, face_model, landmark_model, faces)
 
@@ -136,7 +141,8 @@ def main():
 
                             #### reset for new participant
                 
-            
+                    if hansi.switch == "announce_end":
+                        data.append(all_points)
 
             timer_in_sec, last_t = wait_for_face(timer_in_sec, last_t, dist, DIST_THRESH)
 
@@ -150,12 +156,12 @@ def main():
                     df2 = pd.DataFrame(data)
                     now = archi.now()
                     date_time = now.strftime("%m%d%Y_%H%M%S")
+                    fps_avg = int(np.mean(fps_arr))
 
                     feedback = send_rec_feedback(IP_ADDRESS, PORT, hansi, PI_RESPONSE_TIME)
 
-                    if feedback == True:
-                        filename = f"installation_export/inst_exp_{date_time}_tap{hansi.pred_tap}.csv"
-                        df2.to_csv(filename)
+                    filename = f"installation_export/inst_exp_{date_time}_tap_{hansi.pred_tap}_fdb_{feedback}_avgFPS_{fps_avg}.csv"
+                    df2.to_csv(filename)
 
                     ## new export with labeled data:
                     ## add "WindowOfInterest_tapnumber" to end of filename
@@ -171,6 +177,8 @@ def main():
             # update the FPS counter
             fps.update()
             fps.stop()
+            
+            fps_arr = np.append(fps_arr, int(fps.fps()))
 
 
             color = (0,255,0) if stop_idle else (255,0,0)
