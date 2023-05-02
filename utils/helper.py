@@ -296,7 +296,7 @@ def get_feedback(socket):
     try:
         # Receive the boolean value from the Raspberry Pi
         response = socket.recv(1024).decode()
-        result = bool(response)
+        result = response
 
         # Print the result
         print(f"The boolean value is {result}")
