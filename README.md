@@ -21,10 +21,10 @@ The model in the export directory will be loaded for making predictions.
 
 ### Installation_V2 in branch feeback (MCBW)
 **On RasPi** <br>
-Run [raspi/feedback.py](raspi/feedback.py) on your raspberry pi
+Run [raspi/feedback.py](https://github.com/a-ludwig/smart_hans/blob/feedback/raspi/feedback.py) on your raspberry pi
 
 **On PC** <br>
-To test the connection to the RasPi run raspi/test_socket.py <br>
+To test the connection to the RasPi run [raspi/test_socket.py](https://github.com/a-ludwig/smart_hans/blob/feedback/test_socket.py) <br>
 To run Hans in an exhibition setup run [main.py](main.py). Hans will then work according to the Instructions given in "Hansi_Interaktionsanleitung".
 
 ## Training Smart Hans
