@@ -14,11 +14,18 @@ Check the setup instruction in the !Instructions directory and set up hardware a
 
 ## Running Smart Hans
 
+### Installation_V1 in branch main (lab30)
 To run Hans in an exhibition setup run "main.py". Hans will then work according to the Instructions given in "Hansi_Interaktionsanleitung".
 
 The model in the export directory will be loaded for making predictions.
 
+### Installation_V2 in branch feeback (MCBW)
+**On RasPi** <br>
+Run raspi/feeback.py on your raspberry pi
 
+**On PC** <br>
+To test the connection to the RasPi run raspi/test_socket.py <br>
+To run Hans in an exhibition setup run "main.py". Hans will then work according to the Instructions given in "Hansi_Interaktionsanleitung".
 
 ## Training Smart Hans
 
