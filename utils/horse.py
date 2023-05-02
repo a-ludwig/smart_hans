@@ -1,4 +1,5 @@
 import vlc
+import os
 
 
 class horse:
@@ -16,7 +17,11 @@ class horse:
 
 
     def init_instance(self):
+        # Redirect standard output and error to null device
+        null_device = open(os.devnull, 'w')
         vlc_inst = vlc.Instance('--no-video-title-show', '--fullscreen','--video-on-top', '--mouse-hide-timeout=0')
+        #silence vlc console ouput
+        vlc_inst.log_unset()
         #create media_player
         vlc_inst = vlc.MediaPlayer(vlc_inst)
         vlc_inst.set_fullscreen(True)
