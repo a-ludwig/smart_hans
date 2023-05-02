@@ -10,28 +10,28 @@ Install requirements in requirements.txt. Make sure to have a working CUDA insta
 
 ### Hardware
 
-Check the setup instruction in the !Instructions directory and set up hardware accordingly.
+Check the setup instruction in the [!Instructions directory](!Instruction) and set up hardware accordingly.
 
 ## Running Smart Hans
 
 ### Installation_V1 in branch main (lab30)
-To run Hans in an exhibition setup run "main.py". Hans will then work according to the Instructions given in "Hansi_Interaktionsanleitung".
+To run Hans in an exhibition setup run [main.py](main.py). Hans will then work according to the Instructions given in [Hansi_Interaktionsanleitung](Hansi_Interaktionsanleitung.md).
 
 The model in the export directory will be loaded for making predictions.
 
 ### Installation_V2 in branch feeback (MCBW)
 **On RasPi** <br>
-Run raspi/feeback.py on your raspberry pi
+Run [raspi/feedback.py](raspi/feedback.py) on your raspberry pi
 
 **On PC** <br>
 To test the connection to the RasPi run raspi/test_socket.py <br>
-To run Hans in an exhibition setup run "main.py". Hans will then work according to the Instructions given in "Hansi_Interaktionsanleitung".
+To run Hans in an exhibition setup run [main.py](main.py). Hans will then work according to the Instructions given in "Hansi_Interaktionsanleitung".
 
 ## Training Smart Hans
 
 ### Collecting Data
 
-Datensammeln contains all that is needed to collect data. "Videocapture.py" runs an application that records and plays videos in a specific format. Running it will prompt a few markers to be set.
+[Datensammeln](datensammeln) contains all that is needed to collect data. [Videocapture.py](datensammeln/videocapture.py) runs an application that records and plays videos in a specific format. Running it will prompt a few markers to be set.
 
 1. Acronym for Gender (m/w/d), Height(k/n/g), Face Blocked (y/n). These are by no means accurate measures and so far they have not been used other than for this step.
 2. Number the person will be thinking of.
@@ -40,17 +40,17 @@ When all markers are set, Smart Hans will start tapping. The Horse will tap for 
 
 ### Preprocessing Data
 
-To preprocess Videos that have  been collected use "hansi_preprocessing.py". It takes to arguments "path" and "out". Path is the folder containing your prerecorded videos. "out" is your desired output path. 
+To preprocess Videos that have  been collected use [hansi_preprocessing.py](Machine_learning/hansi_preprocessing.py). It takes to arguments "path" and "out". Path is the folder containing your prerecorded videos. "out" is your desired output path. 
 
 ### Machine Learning
 
 To work with the preprocessed Data use the corresponding notebooks.
 
-tsai_with_real_data_univariate/multivariate.ipynb can be used for training a single model.
+[tsai_with_real_data_univariate/multivariate.ipynb](Machine_learning/tsai_optuna_optimize_with_real_data_univariate.ipynb) can be used for training a single model.
 tsai_compare_... can be used to train and compare multiple models.
 tsai_optuna... can be used to optimize a univariate model.
 
-vis_test.py can be used to visualize the data.
+[vis_test.py](Machine_learning/vis_test.py) can be used to visualize the data.
 
 ## What else is there?
 
