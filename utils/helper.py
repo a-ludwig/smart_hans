@@ -302,7 +302,7 @@ def get_feedback(socket):
         print(f"The boolean value is {result}")
 
     except:
-        print("Timeout occurred while waiting for response from Raspberry Pi")
+        #print("Timeout occurred while waiting for response from Raspberry Pi")
         result = None
 
     return result
@@ -324,7 +324,7 @@ def send_rec_feedback(IP_ADDRESS, PORT, hansi, duration):
         feedback = get_feedback(pi_socket)
 
     # Print a message indicating how long the while loop ran for
-    print(f"The while loop ran for {time.monotonic() - start_time} seconds")
+    #print(f"The while loop ran for {time.monotonic() - start_time} seconds")
 
     # Close the socket
     pi_socket.close()
