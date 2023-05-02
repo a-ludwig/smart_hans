@@ -42,7 +42,9 @@ def main():
     while True:
         # Wait for a client to connect
         conn, addr = s.accept()
+        print("connected")
         conn.settimeout(0.1)
+        
         # Receive the number from the client
         data = conn.recv(1024).decode()
         number = int(data)
@@ -64,16 +66,16 @@ def main():
                     response = str(value).encode()
                     conn.sendall(response)
                     result = True
-                
             # Check if the socket has been closed
             try:
-                data = conn.recv(1024)
-            except:
-                if not data:
-                    print("client closed the socket")
+                data = conn.recv(1024).decode()
+                print(data)
+                if len(data) == 0:
+                    print("connection closed")
                     result = True
-            
-            
+                    
+            except:      
+                pass
                            
         display.value = ('00')
         
@@ -93,7 +95,7 @@ def setup_button(pin_number, callback_function, button):
 def button_callback(channel, button):
     button.pushed = True
     if button.label == 'right':
-        print("rigth was pushed!")
+        print("right was pushed!")
     elif button.label == 'false':
         print("false was pushed!")
 
