@@ -145,17 +145,18 @@ def main (args):
 
 
     print(args)
-    if len(args) >=3 :   
-        path =args[1]
-        out = args[2]
-    else : 
-        print("please add a path for input and output to running this script")
-        exit()
+    # if len(args) >=3 :   
+    #     path =args[1]
+    #     out = args[2]
+    # else : 
+    #     print("please add a path for input and output to running this script")
+    #     exit()
 
-    if not os.path.exists(out):
-       os.makedirs(out)
+    # if not os.path.exists(out):
+    #    os.makedirs(out)
 
-    #path = "/Users/adi/Documents/code/smart_hans/datensammeln/videos/pause_0.8"
+    path = "C:/Users/adi/Documents/hansi_dokuplakat/input_videos"
+    out = "C:/Users/adi/Documents/hansi_dokuplakat"
     font = cv2.FONT_HERSHEY_SIMPLEX 
 
     ##############
@@ -316,7 +317,9 @@ def main (args):
                 } )
             
                 ##############
-                #cv2.imshow('img', img)
+                cv2.imshow('img', img)
+                print("image should be showing")
+                cv2.imwrite("C:/Users/adi/Documents/hansi_dokuplakat/single_Frames/bepunktet%d.jpg" % current_frame, img) # save frame as JPEG file
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     
                     break

@@ -3,6 +3,7 @@ import pandas as pd
 import random
 import numpy as np
 import os
+import pathlib
 
 #from HANS_Repo.Machine_learning.datenverarbeitung.dataloader import dataloader
 
@@ -54,14 +55,17 @@ class visualizer:
             pos = temp_df.size-3
             plt.text(x = float(pos), y = temp_df.iloc[pos].item(), s= timestamp)
 
-        self.legend_without_duplicate_labels(ax)
+        sname  = pathlib.Path(fname).with_suffix(".png")
 
-        self.show()
+        self.legend_without_duplicate_labels(ax)
+        plt.savefig(fname = sname, format = 'PNG', dpi = 'figure')
+       # self.show()
         return
 
     def visualize_raw(self, path):
-        df_len = 800
+        df_len = 500
         y = list(range(0,df_len))
+        counter = 0
         
         for file in os.listdir(path):
             fig = plt.figure(figsize = (10,8))
@@ -89,7 +93,10 @@ class visualizer:
                 ax.set_title(list(self.dl.column_dict.keys())[list(self.dl.column_dict.values()).index(i+1)])
             #break
             fig.suptitle(file)
-            plt.show()
+            
+            plt.savefig(fname= self.path + "/figure_500_" + str(counter) +".png", format = 'PNG', dpi = 'figure')
+            counter = counter + 1
+            #plt.show()
         
 
     def legend_without_duplicate_labels(self, ax): # https://stackoverflow.com/questions/19385639/duplicate-items-in-legend-in-matplotlib/56253636#56253636

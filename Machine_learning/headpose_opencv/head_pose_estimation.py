@@ -20,7 +20,7 @@ from face_landmarks import get_landmark_model, detect_marks
 # %matplotlib inline
 
 import pandas as pd
-import stumpy
+#import stumpy
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.dates as dates
@@ -146,7 +146,8 @@ def head_pose_points(img, rotation_vector, translation_vector, camera_matrix):
     
 face_model = get_face_detector()
 landmark_model = get_landmark_model()
-cap = cv2.VideoCapture(0)
+## load Video
+cap = cv2.VideoCapture("C:/Users/adi/Documents/hansi_dokuplakat/input_Videos/smart_hans_08022022_163917_8_279-309_0.8_mny_.avi")
 ret, img = cap.read()
 size = img.shape
 font = cv2.FONT_HERSHEY_SIMPLEX 
@@ -251,17 +252,20 @@ while True:
             cols = ['p1.x','p1.y','p2.x', 'p2.y']
             results = pd.DataFrame(data, columns=cols)
 
-            stream = stumpy.stumpi(results["p1.x"].astype(np.float64), stumpM)
+            #stream = stumpy.stumpi(results["p1.x"].astype(np.float64), stumpM)
         
 
-        if len(data) > 60:
+        #if len(data) > 60:
             
             ## print("adding Data to stream: )
-            stream.update(float(p1[0]))
-            discord_idx = np.argsort(stream.P_)[-1]
+            #stream.update(float(p1[0]))
+           # discord_idx = np.argsort(stream.P_)[-1]
 
         ##############
+        current_frame = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
         cv2.imshow('img', img)
+        print("image should be showing")
+        cv2.imwrite("C:/Users/adi/Documents/hansi_dokuplakat/single_Frames/bepunktet%d.jpg" % current_frame, img)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
     else:
@@ -299,11 +303,11 @@ plt.show()
 
 mD =  30
 #mp = stumpy.gpu_stump(results["p1.x"].astype(np.float64), m)
-mp = stumpy.stump(results["p1.x"].astype(np.float64), mD)
+#mp = stumpy.stump(results["p1.x"].astype(np.float64), mD)
 
-discord_idx = np.argsort(mp[:, 0])[-1]
+#discord_idx = np.argsort(mp[:, 0])[-1]
 
-nearest_neighbor_distance = mp[discord_idx, 0]
+#nearest_neighbor_distance = mp[discord_idx, 0]
 
 
 ########

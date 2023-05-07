@@ -179,6 +179,7 @@ def estimate_head_pose(img, model_points, camera_matrix, face_model, landmark_mo
     
     (nose_end_point2D, jacobian) = cv2.projectPoints(np.array([(0.0, 0.0, 1000.0)]), rotation_vector, translation_vector, camera_matrix, dist_coeffs)
     
+    # comment out for doku
     for p in image_points:
         cv2.circle(img, (int(p[0]), int(p[1])), 3, (0,0,255), -1)
     
@@ -206,8 +207,8 @@ def estimate_head_pose(img, model_points, camera_matrix, face_model, landmark_mo
         ang2 = 90
     
 
-    cv2.putText(img, str(ang1), tuple(p1), font, 2, (128, 255, 255), 3)
-    cv2.putText(img, str(ang2), tuple(x1), font, 2, (255, 255, 128), 3)
+    #cv2.putText(img, str(ang1), tuple(p1), font, 2, (128, 255, 255), 3)
+    #cv2.putText(img, str(ang2), tuple(x1), font, 2, (255, 255, 128), 3)
 
     rmat, jac = cv2.Rodrigues(rotation_vector)
     angles, mtxR, mtxQ, Qx, Qy, Qz = cv2.RQDecomp3x3(rmat)

@@ -24,13 +24,14 @@ import numpy as np
 from tsai.all import *
 from threading import Thread
 
-rot_angle = 0 #270
+rot_angle = 90 #270
 debug = True
 found_face = False
 stop_idle = False
 stop_tap = False
 curr_num = 1
 df = pd.DataFrame()
+
 
 ##threshold for distance detection
 DIST_THRESH = 35
@@ -50,7 +51,7 @@ def main():
     window_size = tap_size * nr_taps
     move_by = -12
     prediction_threshold = 0.571
-
+    counter = 0 
     cycle_size = 23
     n = 2 ### cycle/n for modulo
 
@@ -183,12 +184,13 @@ def main():
 
             color = (0,255,0) if stop_idle else (255,0,0)
 
-            cv2.putText(img, str(int(timer_in_sec)), [100,100], font, 2, color, 3)
-            cv2.putText(img, str(dist), [180,100], font, 2, color, 3)
-            cv2.putText(img, str(int(fps.fps())), [100,200], font, 2, (0,0,255), 3)
+            # cv2.putText(img, str(int(timer_in_sec)), [100,100], font, 2, color, 3)
+            # cv2.putText(img, str(dist), [180,100], font, 2, color, 3)
+            # cv2.putText(img, str(int(fps.fps())), [100,200], font, 2, (0,0,255), 3)
 
-
+            counter = counter +1
             cv2.imshow('img', img)
+            cv2.imwrite("C:/Users/adi/Documents/hansi_dokuplakat/single_Frames/bepunktet_neu_%d.jpg" % counter, img) 
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
