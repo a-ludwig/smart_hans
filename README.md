@@ -5,8 +5,12 @@ This repository contains all components that are needed to collect data, train, 
 ## Setup
 
 ### Software
+Install vlc player 64-bit (https://www.videolan.org)
+Install Conda https://docs.conda.io/projects/conda/en/latest/user-guide/install/windows.html
+Set up an environment using "smart_hans_2024.yml". Open a conda terminal and navigate to this base directory. then create the environment by using this command: 
 
-Install requirements in requirements.txt. Make sure to have a working CUDA installation. Smart Hans worked fine with CUDA 11.6.
+conda create --name smart_hans --file smart_hans_2024.yml
+
 
 ### Hardware
 

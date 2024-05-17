@@ -1,8 +1,0 @@
-opencv-python
-imutils
-tensorflow==2.10.0
-pandas
-python-vlc
-tsai
-IPython
-ipykernel
