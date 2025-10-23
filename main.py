@@ -35,7 +35,7 @@ curr_num = 1
 df = pd.DataFrame()
 
 ##threshold for distance detection
-thresh = 35
+thresh =25
 ##waiting time for Hansi to Start in Secs
 waiting_time = 5
 
@@ -177,6 +177,31 @@ class VideoStreamWidget(object): ###https://stackoverflow.com/questions/54933801
             exit(1)
 
 def main():
+
+    while True:
+        try:
+            print("Testing webcam...")
+            cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)  # Use cv2.CAP_ANY for cross-platform
+
+            if not cap.isOpened():
+                print("Error: Could not open webcam.")
+            else:
+                print("Webcam found.")
+
+                ret, frame = cap.read()
+                if not ret or frame is None:
+                    print("Error: Frame is empty!")
+                else:
+                    print("Webcam is returning frames.")
+                    # Optionally display the image
+                    break  # Exit loop if everything works
+
+            #cap.release()  # Always release the webcam
+            time.sleep(2)  # Wait before retrying
+
+        except Exception as e:
+            print(f"Exception occurred: {e}")
+            time.sleep(2)
     
     nr_taps = 1
     tap_size = 30
@@ -197,7 +222,7 @@ def main():
 
     hansi = horse() ##hansi is our magnificent horse 
 
-    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+    #cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
     cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
     ret, img = cap.read()
     rot_M, cam_M = get_camera_matrixes(img, rot_angle)
@@ -238,7 +263,10 @@ def main():
             
             if face_found:
                 img, image_points, all_points = estimate_head_pose(img, model_points, cam_M, face_model, landmark_model, faces)
-
+                # cv2.imshow("img", img)
+                # key = cv2.waitKey(1)
+                # if key == ord('q'):
+                #     break
                 dist = get_face_dist(image_points)
                 #print(f"hansi curr tap: {hansi.curr_tap}")
                 if hansi.switch == "tapping" and hansi.curr_tap >= 2:
@@ -322,13 +350,13 @@ def make_pred( window_scaled,predictor, threshold, class_to_look_at):
     X = np.array([X])
     X = np.array([X])
     
-    print(X)
+    # print(X)
     ##Inference on Window
     #
     probabilities_class, _, predicted_class = predictor.get_X_preds(X)
     
     predictor_probas_np = probabilities_class.numpy()[0]
-    print(probabilities_class)
+    # print(probabilities_class)
     class_predicted = None
     temp = 0
     # for i, elem in enumerate(predictor_probas_np):
@@ -400,7 +428,7 @@ def wait_for_face(timer_in_sec, last_t, dist, thresh):
     # face close enough?
     if dist > thresh:
         timer_in_sec += dt  # sum up
-        #print(timer_in_sec)
+        # print(timer_in_sec)
     else:
         timer_in_sec = 0    # reset
     return timer_in_sec, last_t
