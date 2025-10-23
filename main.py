@@ -1,5 +1,7 @@
 import cv2
 import numpy as np
+if not hasattr(np, "int"):
+    np.int = int
 import math
 import time
 from datetime import datetime as archi
@@ -334,6 +336,9 @@ def make_pred( window_scaled,predictor, threshold, class_to_look_at):
     #                         class_predicted = i
     #                         temp = elem
                             #print(elem)
+    print(predictor_probas_np[class_to_look_at])
+    print(f"prredicted class:{predicted_class}")
+    # print(predicted_class)
     if predictor_probas_np[class_to_look_at] > threshold:
         class_predicted = class_to_look_at
 
